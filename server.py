@@ -165,13 +165,8 @@ def api_plan():
         "date": req.get('start_date') or "Anytime",
         "duration": req.get('duration')
     }
-
-    # Save to DB
-    db = load_db()
-    db['trips'].insert(0, result)
-    save_db(db)
-
-    print(f"✅ Trip saved (id={result['id']})")
+    # Trips are saved in browser localStorage — no DB needed
+    print(f"✅ Trip generated (id={result['id']})")
     return jsonify(result)
 
 # POST: AI adjust itinerary
@@ -196,7 +191,6 @@ def api_adjust():
 # ==========================================
 if __name__ == '__main__':
     print(f"🚀 Wander Server (Flask) → http://localhost:{PORT}")
-    print(f"💾 Database: {DB_FILE}")
     app.run(
         host='0.0.0.0',
         port=PORT,
