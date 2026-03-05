@@ -7,7 +7,7 @@ import urllib.error
 # 🔑 API KEY CONFIGURATION
 # ==========================================
 import os as _os
-API_KEY = _os.environ.get('GEMINI_API_KEY', 'AIzaSyB8MRtA3h90pSFTj9Oa6XyG_OCcjLwzetw')
+API_KEY = _os.environ.get('GEMINI_API_KEY', '')
 MODEL_NAME = "gemini-2.5-flash"
 
 def call_gemini(prompt):
