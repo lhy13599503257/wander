@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WANDER | Urban Nomad</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:ital,wght@1,400&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0a0a0a;
+            color: #e5e5e5;
+        }
+        
+        [id^="view-"] { min-height: 100vh; }
+        
+        .serif { font-family: 'Playfair Display', serif; }
+        .accent-text { color: #ff5e00; }
+        .accent-bg { background-color: #ff5e00; }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Animations */
+        .fade-in { animation: fadeIn 0.8s ease-out forwards; }
+        .fade-out { animation: fadeOut 0.5s ease-in forwards; }
+        .slide-up { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .slide-up-delay-1 { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards; opacity: 0; }
+        .slide-up-delay-2 { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards; opacity: 0; }
+        .slide-up-delay-3 { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards; opacity: 0; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .choice-card:hover {
+            border-color: #ff5e00;
+            background: rgba(255, 94, 0, 0.05);
+            transform: translateY(-2px);
+        }
+        
+        .transport-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .fade-enter { opacity: 0; transform: translateX(-10px); transition: all 0.5s ease; }
+        .fade-enter-active { opacity: 1; transform: translateX(0); }
+        .fade-exit { opacity: 1; transform: translateX(0); transition: all 0.5s ease; }
+        .fade-exit-active { opacity: 0; transform: translateX(-10px); pointer-events: none; }
+
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 24px; width: 24px; border-radius: 50%; background: #ff5e00; cursor: pointer; margin-top: -10px; box-shadow: 0 0 10px rgba(255, 94, 0, 0.5); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #333; border-radius: 2px; }
+        
+        .tag-btn {
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 999px;
+            padding: 0.5rem 1.2rem;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            background: transparent;
+            color: #aaa;
+            cursor: pointer;
+            margin-bottom: 0.5rem;
+        }
+        .tag-btn:hover {
+            border-color: #ff5e00;
+            color: white;
+        }
+        .tag-btn.selected {
+            background-color: #ff5e00;
+            border-color: #ff5e00;
+            color: white;
+        }
+
+        .dashboard-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 50;
+            background: linear-gradient(to bottom, #0a0a0a 0%, transparent 100%);
+        }
+        
+        .minimal-input {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid #333;
+            color: white;
+            font-size: 2rem;
+            width: 100%;
+            padding-bottom: 0.5rem;
+            outline: none;
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+        }
+        .minimal-input:focus { border-color: #ff5e00; }
+        .minimal-input::placeholder { color: #333; }
+
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            opacity: 0.5;
+            cursor: pointer;
+        }
+
+        #profile-modal { transition: opacity 0.3s ease; }
+        
+        #btn-save-edit {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 60;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+        #btn-save-edit.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Timeline */
+        .timeline-line {
+            position: absolute;
+            left: 20px;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: rgba(255,255,255,0.1);
+            z-index: 0;
+        }
+        .timeline-item {
+            position: relative;
+            padding-left: 50px;
+            margin-bottom: 2.5rem;
+            z-index: 10;
+        }
+        .timeline-dot {
+            position: absolute;
+            left: 16px;
+            top: 6px;
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #333;
+            border: 1px solid #555;
+            transition: all 0.3s;
+        }
+        .timeline-item:hover .timeline-dot {
+            background: #ff5e00;
+            border-color: #ff5e00;
+            box-shadow: 0 0 10px rgba(255, 94, 0, 0.5);
+        }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Autocomplete List */
+        .autocomplete-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #111;
+            border: 1px solid #333;
+            border-top: none;
+            z-index: 99;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .autocomplete-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #222;
+            color: #ccc;
+        }
+        .autocomplete-item:hover {
+            background-color: #222;
+            color: white;
+        }
+        .autocomplete-item strong {
+            color: #ff5e00;
+        }
+
+        /* Logistics Card */
+        .logistics-card {
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Map Overlay */
+        #map-overlay { z-index: 48; }
+        #leaflet-map { width: 100%; height: calc(100vh - 80px); }
+        .leaflet-container { background: #0a0a0a; }
+        .leaflet-popup-content-wrapper {
+            background: #1a1a1a !important;
+            color: #e5e5e5 !important;
+            border: 1px solid #333 !important;
+            border-radius: 0 !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.8) !important;
+        }
+        .leaflet-popup-tip { background: #1a1a1a !important; }
+        .leaflet-popup-close-button { color: #666 !important; }
+        .leaflet-bar a { background: #1a1a1a !important; color: #e5e5e5 !important; border-color: #333 !important; }
+        .leaflet-bar a:hover { background: #ff5e00 !important; color: white !important; }
+
+        /* Budget Bar */
+        #budget-bar { transition: transform 0.3s ease; }
+
+        /* AI Chat Panel */
+        #ai-chat-panel {
+            max-height: 68vh;
+            transform: translateY(100%);
+            transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #ai-chat-panel.open { transform: translateY(0); }
+        .chat-bubble-user { background: #ff5e00; color: white; border-radius: 18px 18px 4px 18px; }
+        .chat-bubble-ai { background: #141414; border: 1px solid #222; color: #d4d4d4; border-radius: 18px 18px 18px 4px; }
+        #chat-input::placeholder { color: #333; }
+        .thinking-dots::after { content: ''; animation: dots 1.2s infinite; }
+        @keyframes dots { 0%{content:'.'} 33%{content:'..'} 66%{content:'...'} }
+
+        /* Activity Check States */
+        .check-btn { transition: all 0.2s ease; }
+        .check-btn.checked { background: #ff5e00 !important; border-color: #ff5e00 !important; color: white !important; }
+        .activity-done { opacity: 0.55; }
+        .activity-done h3 { text-decoration: line-through; }
+        .cost-badge { font-size: 10px; color: #666; border: 1px solid #222; padding: 2px 8px; border-radius: 999px; }
+        .cost-badge.free { color: #4ade80; border-color: #166534; }
+
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-6 selection:bg-orange-500 selection:text-white">
+
+    <div class="fixed top-0 w-full flex justify-between px-6 py-4 text-xs text-neutral-500 uppercase tracking-widest z-50 pointer-events-none">
+        <span>9:41</span>
+        <span>WANDER v2.3</span>
+        <!-- Language Switch -->
+        <span class="pointer-events-auto cursor-pointer hover:text-white transition-colors" onclick="toggleLanguage()" id="lang-switch">EN</span>
+    </div>
+
+    <!-- BACK BUTTON -->
+    <button id="btn-back" onclick="goBack()" class="fixed top-20 left-6 text-neutral-500 hover:text-white transition-colors uppercase text-xs tracking-widest flex items-center space-x-2 fade-exit-active z-40">
+        <span>←</span> <span>BACK</span>
+    </button>
+    
+    <!-- QUICK SAVE BUTTON -->
+    <button id="btn-save-edit" onclick="saveAndReturn()" class="bg-orange-500 text-white px-8 py-4 uppercase text-xs tracking-widest font-bold shadow-lg hover:bg-orange-600 rounded-full">
+        Save & Return
+    </button>
+
+    <!-- VIEW 1: LOCATION -->
+    <div id="view-location" class="w-full max-w-md space-y-12 fade-in">
+        <div class="flex items-center space-x-4"><div class="h-[1px] w-8 accent-bg"></div><span class="text-xs uppercase tracking-[0.2em] text-neutral-400">Profile Setup 01/07</span></div>
+        <div class="space-y-6">
+            <h1 class="serif text-4xl italic leading-tight text-white">Where do you <br> call <span class="accent-text">home</span>?</h1>
+            <p class="text-neutral-500 text-sm font-light">Start typing to search global cities.</p>
+            <div class="space-y-4">
+                <div class="relative group">
+                    <input type="text" id="home-search" placeholder="e.g. London, Toronto, Shanghai" class="minimal-input" autocomplete="off">
+                    <div id="home-suggestions" class="autocomplete-list hidden"></div>
+                </div>
+            </div>
+        </div>
+        <button id="btn-next-1" class="glass-card w-full py-4 mt-8 uppercase text-xs tracking-widest text-neutral-400 hover:text-white">Confirm Location</button>
+    </div>
+
+    <!-- VIEW 2: TRAVEL STYLE -->
+    <div id="view-style" class="hidden w-full max-w-md space-y-12">
+        <div class="flex items-center space-x-4"><div class="h-[1px] w-16 accent-bg"></div><span class="text-xs uppercase tracking-[0.2em] text-neutral-400">Travel Style 02/07</span></div>
+        <h1 class="serif text-4xl italic leading-tight text-white slide-up">What's your <br> <span class="accent-text">vibe</span>?</h1>
+        <div class="grid grid-cols-1 gap-4">
+            <button onclick="nextStep(2, 'chill')" class="choice-card group glass-card p-6 text-left slide-up-delay-1"><div class="mb-2 text-2xl">🐢</div><h3 class="text-lg font-serif italic text-white mb-1">Chill & Relax</h3></button>
+            <button onclick="nextStep(2, 'rush')" class="choice-card group glass-card p-6 text-left slide-up-delay-2"><div class="mb-2 text-2xl">🐇</div><h3 class="text-lg font-serif italic text-white mb-1">The "Special Forces"</h3></button>
+        </div>
+    </div>
+
+    <!-- VIEW 3: TRANSPORT -->
+    <div id="view-transport" class="hidden w-full max-w-md space-y-12">
+        <div class="flex items-center space-x-4"><div class="h-[1px] w-24 accent-bg"></div><span class="text-xs uppercase tracking-[0.2em] text-neutral-400">Preferences 03/07</span></div>
+        <h1 class="serif text-4xl italic leading-tight text-white slide-up">How do you <br> <span class="accent-text">move</span>?</h1>
+        <div class="transport-grid">
+            <button onclick="nextStep(3, 'walk')" class="choice-card group glass-card p-6 text-left h-40 flex flex-col justify-between slide-up-delay-1"><span class="text-3xl">🚶</span><h3 class="text-lg font-serif italic text-white">Citywalk</h3></button>
+            <button onclick="nextStep(3, 'transit')" class="choice-card group glass-card p-6 text-left h-40 flex flex-col justify-between slide-up-delay-2"><span class="text-3xl">🚇</span><h3 class="text-lg font-serif italic text-white">Transit</h3></button>
+            <button onclick="nextStep(3, 'taxi')" class="choice-card group glass-card p-6 text-left h-40 flex flex-col justify-between slide-up-delay-3"><span class="text-3xl">🚕</span><h3 class="text-lg font-serif italic text-white">Taxi</h3></button>
+            <button onclick="nextStep(3, 'drive')" class="choice-card group glass-card p-6 text-left h-40 flex flex-col justify-between slide-up-delay-3"><span class="text-3xl">🚗</span><h3 class="text-lg font-serif italic text-white">Rental</h3></button>
+        </div>
+    </div>
+
+    <!-- VIEW 4: BUDGET -->
+    <div id="view-budget" class="hidden w-full max-w-md space-y-12">
+        <div class="flex items-center space-x-4"><div class="h-[1px] w-32 accent-bg"></div><span class="text-xs uppercase tracking-[0.2em] text-neutral-400">Preferences 04/07</span></div>
+        <h1 class="serif text-4xl italic leading-tight text-white slide-up">What's the <br> <span class="accent-text">budget</span>?</h1>
+        <div class="grid grid-cols-1 gap-4">
+            <button onclick="nextStep(4, 'budget')" class="choice-card group glass-card p-6 text-left slide-up-delay-1"><h3 class="text-lg font-serif italic text-white">Budget Friendly ($)</h3></button>
+            <button onclick="nextStep(4, 'standard')" class="choice-card group glass-card p-6 text-left slide-up-delay-2"><h3 class="text-lg font-serif italic text-white">Standard Comfort ($$)</h3></button>
+            <button onclick="nextStep(4, 'luxury')" class="choice-card group glass-card p-6 text-left slide-up-delay-3"><h3 class="text-lg font-serif italic text-white">Luxury & Indulge ($$$$)</h3></button>
+        </div>
+    </div>
+
+    <!-- VIEW 5: FLIGHT -->
+    <div id="view-flight" class="hidden w-full max-w-md space-y-12">
+        <div class="flex items-center space-x-4"><div class="h-[1px] w-40 accent-bg"></div><span class="text-xs uppercase tracking-[0.2em] text-neutral-400">Flight Priority 05/07</span></div>
+        <div class="space-y-12">
+            <h1 class="serif text-4xl italic leading-tight text-white slide-up">Flight <br> <span class="accent-text">trade-off</span>?</h1>
+            <div class="space-y-8 slide-up-delay-1">
+                <div class="flex justify-between text-sm text-neutral-400 uppercase tracking-widest font-semibold"><span>Cheap Price</span><span>Fast Direct</span></div>
+                <div class="relative h-12 flex items-center"><input type="range" min="1" max="5" value="3" class="w-full" id="flight-range"></div>
+                <p class="text-center text-neutral-500 text-xs italic transition-all duration-300 h-4" id="flight-desc">Balanced: Reasonable layovers for good prices.</p>
+            </div>
+            <button onclick="nextStep(5, document.getElementById('flight-range').value)" class="glass-card w-full py-4 text-neutral-400 hover:text-white uppercase text-xs tracking-widest">Confirm Priority</button>
+        </div>
+    </div>
+
+    <!-- VIEW 6: SPORTS -->
+    <div id="view-sports" class="hidden w-full max-w-md space-y-12">
+        <div class="flex items-center space-x-4"><div class="h-[1px] w-48 accent-bg"></div><span class="text-xs uppercase tracking-[0.2em] text-neutral-400">Sports 06/07</span></div>
+        <div class="space-y-8">
+            <h1 class="serif text-4xl italic leading-tight text-white slide-up">Active <br> <span class="accent-text">lifestyle</span>?</h1>
+            <div class="flex flex-wrap gap-3 slide-up-delay-1" id="sports-container"></div>
+            <button onclick="nextStep(6, 'sports')" class="glass-card w-full py-4 mt-8 text-neutral-400 hover:text-white uppercase text-xs tracking-widest">Confirm Activities</button>
+        </div>
+    </div>
+
+    <!-- VIEW 7: SHOPPING -->
+    <div id="view-shopping" class="hidden w-full max-w-md space-y-12">
+        <div class="flex items-center space-x-4"><div class="h-[1px] w-56 accent-bg"></div><span class="text-xs uppercase tracking-[0.2em] text-neutral-400">Shopping 07/07</span></div>
+        <div class="space-y-8">
+            <h1 class="serif text-4xl italic leading-tight text-white slide-up">Retail <br> <span class="accent-text">therapy</span>?</h1>
+            <div class="flex flex-wrap gap-3 slide-up-delay-1" id="shopping-container"></div>
+            <button onclick="finishProfile()" class="glass-card w-full py-4 mt-8 text-orange-500 border-orange-900/50 hover:bg-orange-900/20 uppercase text-xs tracking-widest font-bold">Finish Profile Setup</button>
+        </div>
+    </div>
+
+    <!-- VIEW 8: GENERATING -->
+    <div id="view-final" class="hidden w-full max-w-md space-y-12 text-center">
+        <div class="animate-pulse space-y-6">
+            <h1 class="serif text-5xl italic text-white">Initializing...</h1>
+            <p class="text-neutral-500">Creating your personal travel dashboard.</p>
+            <div class="h-1 w-24 bg-orange-500 mx-auto rounded-full"></div>
+        </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="view-dashboard" class="hidden w-full min-h-screen relative fade-in">
+        <div class="dashboard-header">
+            <span class="text-xl font-bold tracking-tighter">WN<br>DR</span>
+            <button onclick="toggleProfileModal()" class="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-xs text-orange-500 hover:bg-neutral-700 hover:text-white transition-colors">HY</button>
+        </div>
+        <div class="flex flex-col justify-center min-h-screen max-w-md mx-auto px-6 space-y-12">
+            <div class="space-y-2"><p class="text-orange-500 text-xs uppercase tracking-widest">Ready for next adventure?</p><h1 class="text-3xl text-white font-light">Where to next, <br> <span class="font-serif italic">Haoyang?</span></h1></div>
+            <div class="space-y-8">
+                <!-- DESTINATION INPUT -->
+                <div class="group relative">
+                    <label class="text-neutral-600 text-xs uppercase tracking-widest mb-2 block">Destination</label>
+                    <input type="text" id="trip-dest" placeholder="e.g. London, Tokyo, Reykjavik" class="minimal-input" autocomplete="off">
+                    <div id="dest-suggestions" class="autocomplete-list hidden"></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-8">
+                    <div class="group"><label class="text-neutral-600 text-xs uppercase tracking-widest mb-2 block">Start Date</label><input type="text" placeholder="Select Date" class="minimal-input text-xl" onfocus="(this.type='date')" onblur="(this.type='text')" id="trip-date" style="font-size: 1.25rem;"></div>
+                    <div class="group"><label class="text-neutral-600 text-xs uppercase tracking-widest mb-2 block">Duration (Days)</label><div class="flex items-center border-b border-neutral-800 py-2"><input type="number" value="7" min="1" max="30" class="bg-transparent text-white text-2xl w-full outline-none font-serif italic" id="trip-days"><span class="text-neutral-600 text-sm">DAYS</span></div></div>
+                </div>
+                <!-- Budget + Currency -->
+                <div class="grid grid-cols-2 gap-8">
+                    <div class="group">
+                        <label class="text-neutral-600 text-xs uppercase tracking-widest mb-2 block">Trip Budget</label>
+                        <div class="flex items-center border-b border-neutral-800 py-2">
+                            <span class="text-neutral-500 text-2xl mr-1" id="currency-symbol">$</span>
+                            <input type="number" placeholder="5000" class="bg-transparent text-white text-2xl w-full outline-none font-serif italic" id="trip-budget">
+                        </div>
+                    </div>
+                    <div class="group">
+                        <label class="text-neutral-600 text-xs uppercase tracking-widest mb-2 block">Currency</label>
+                        <select id="trip-currency" onchange="updateCurrencySymbol()" class="bg-transparent text-white text-lg w-full outline-none border-b border-neutral-800 py-2 cursor-pointer appearance-none">
+                            <option value="USD" data-symbol="$" class="bg-neutral-900">$ USD</option>
+                            <option value="GBP" data-symbol="£" class="bg-neutral-900">£ GBP</option>
+                            <option value="EUR" data-symbol="€" class="bg-neutral-900">€ EUR</option>
+                            <option value="CAD" data-symbol="C$" class="bg-neutral-900">C$ CAD</option>
+                            <option value="AUD" data-symbol="A$" class="bg-neutral-900">A$ AUD</option>
+                            <option value="JPY" data-symbol="¥" class="bg-neutral-900">¥ JPY</option>
+                            <option value="CNY" data-symbol="¥" class="bg-neutral-900">¥ CNY</option>
+                            <option value="HKD" data-symbol="HK$" class="bg-neutral-900">HK$ HKD</option>
+                            <option value="SGD" data-symbol="S$" class="bg-neutral-900">S$ SGD</option>
+                            <option value="KRW" data-symbol="₩" class="bg-neutral-900">₩ KRW</option>
+                            <option value="CHF" data-symbol="CHF" class="bg-neutral-900">CHF Swiss</option>
+                            <option value="MXN" data-symbol="MX$" class="bg-neutral-900">MX$ MXN</option>
+                            <option value="BRL" data-symbol="R$" class="bg-neutral-900">R$ BRL</option>
+                            <option value="THB" data-symbol="฿" class="bg-neutral-900">฿ THB</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <!-- Real Flights (Amadeus) -->
+            <div id="flights-section" class="hidden">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-neutral-600 text-xs uppercase tracking-widest">Real Flights ✈️</span>
+                    <button onclick="document.getElementById('flights-section').classList.add('hidden'); document.getElementById('flights-result').innerHTML=''" class="text-neutral-700 text-xs hover:text-white">✕</button>
+                </div>
+                <div id="flights-result" class="space-y-2"></div>
+            </div>
+            <div class="flex gap-3 mt-8">
+                <button onclick="searchRealFlights()" id="btn-flights" class="flex-shrink-0 py-5 px-5 glass-card border border-neutral-800 hover:border-orange-500 text-neutral-400 hover:text-white transition-all text-xs tracking-widest uppercase">✈️ Flights</button>
+                <button onclick="startPlanning()" class="flex-1 py-5 bg-white text-black hover:bg-orange-500 hover:text-white transition-all uppercase text-sm tracking-[0.2em] font-bold" id="btn-create-itinerary">Create Itinerary</button>
+            </div>
+            
+            <!-- SAVED JOURNEYS (NEW!) -->
+            <div class="pt-12 border-t border-neutral-900" id="recent-trips-section">
+                <p class="text-neutral-700 text-xs uppercase tracking-widest mb-4">Saved Journeys</p>
+                <div class="flex space-x-4 overflow-x-auto pb-4 no-scrollbar" id="recent-trips-container">
+                    <div class="text-neutral-800 text-sm italic">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW 9.5: LOADING -->
+    <div id="view-loading" class="hidden w-full min-h-screen flex flex-col items-center justify-center fade-in bg-black z-50 fixed inset-0">
+        <h1 class="serif text-4xl italic text-white animate-pulse">Wander AI is thinking...</h1>
+        <p class="text-neutral-500 mt-4 text-xs tracking-widest uppercase">Matching <span id="loading-city">City</span> with your Vibe</p>
+    </div>
+
+    <!-- VIEW 10: ITINERARY -->
+    <div id="view-itinerary" class="hidden fixed inset-0 w-full h-full bg-black fade-in overflow-y-auto pb-20 z-40">
+        
+        <!-- BG Image -->
+        <div id="itinerary-bg" class="fixed top-0 left-0 w-full h-[40vh] bg-cover bg-center z-0 transition-all duration-1000 pointer-events-none">
+            <div class="absolute inset-0 bg-gradient-to-b from-black/30 via-black/60 to-[#0a0a0a]"></div>
+        </div>
+
+        <!-- Header -->
+        <div class="relative z-10 px-6 pt-20 pb-8">
+            <button onclick="closeItinerary()" class="absolute top-6 left-6 text-white/50 hover:text-white uppercase text-xs tracking-widest">← DASHBOARD</button>
+            <h1 class="font-serif italic text-5xl text-white mb-2" id="itinerary-title">Destination</h1>
+            <p class="text-neutral-400 text-sm uppercase tracking-widest mb-4" id="itinerary-meta">Meta Info</p>
+            
+            <!-- Logistics Card -->
+            <div class="logistics-card hidden" id="logistics-card">
+                <h3 class="text-xs text-orange-500 uppercase tracking-widest mb-3">Trip Logistics</h3>
+                <div class="grid grid-cols-1 gap-3 text-xs text-neutral-300">
+                    <div class="flex items-start"><span class="mr-2">✈️</span> <span id="log-flight" class="italic">Calculating flights...</span></div>
+                    <div class="flex items-start"><span class="mr-2">🏨</span> <span id="log-hotel" class="italic">Finding hotel...</span></div>
+                    <div class="flex items-start"><span class="mr-2">🚕</span> <span id="log-transport" class="italic">Transport tips...</span></div>
+                    <div class="mt-2 pt-2 border-t border-neutral-800 flex items-start"><span class="mr-2">💰</span> <span id="log-budget" class="text-white font-bold">Budget breakdown...</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Day Navigation + Map Toggle -->
+        <div class="relative z-10 px-6 mb-0 flex items-center justify-between border-b border-neutral-800 pb-4">
+            <div class="overflow-x-auto no-scrollbar flex space-x-6 flex-1" id="day-tabs"></div>
+            <button onclick="toggleMap()" class="ml-4 flex-shrink-0 flex items-center space-x-1 text-neutral-500 hover:text-white border border-neutral-800 hover:border-orange-500 px-3 py-1.5 text-[10px] uppercase tracking-widest transition-colors">
+                <span>🗺</span><span class="ml-1">Map</span>
+            </button>
+        </div>
+        <div class="mb-8"></div>
+
+        <!-- Timeline Content -->
+        <div class="relative z-10 px-6 max-w-md mx-auto">
+            <div class="timeline-line"></div>
+            <div id="timeline-container"></div>
+        </div>
+
+        <!-- FAB & Menu -->
+        <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+            <div id="fab-menu" class="mb-4 space-y-3 opacity-0 pointer-events-none transition-all duration-300 translate-y-10 flex flex-col items-end">
+                <button onclick="fabAction('add')" class="flex items-center space-x-3 group">
+                    <span class="text-white text-xs bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Add Activity</span>
+                    <div class="w-10 h-10 rounded-full bg-neutral-800 border border-neutral-700 text-white flex items-center justify-center shadow-lg hover:bg-orange-500 transition-colors">✎</div>
+                </button>
+                <button onclick="fabAction('share')" class="flex items-center space-x-3 group">
+                    <span class="text-white text-xs bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Share Trip</span>
+                    <div class="w-10 h-10 rounded-full bg-neutral-800 border border-neutral-700 text-white flex items-center justify-center shadow-lg hover:bg-blue-500 transition-colors">↗</div>
+                </button>
+                <button onclick="fabAction('ask')" class="flex items-center space-x-3 group">
+                    <span class="text-white text-xs bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Ask AI</span>
+                    <div class="w-10 h-10 rounded-full bg-neutral-800 border border-neutral-700 text-white flex items-center justify-center shadow-lg hover:bg-purple-500 transition-colors">✨</div>
+                </button>
+            </div>
+            <button onclick="toggleFab()" id="fab-main" class="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center shadow-lg hover:bg-orange-500 hover:text-white transition-all text-2xl font-serif z-50 transition-transform duration-300">+</button>
+        </div>
+    </div>
+
+    <!-- AI CHAT PANEL -->
+    <div id="ai-chat-panel" class="fixed inset-x-0 bottom-0 hidden flex-col bg-[#0a0a0a] border-t border-neutral-800 shadow-2xl" style="z-index:52;">
+        <!-- Header -->
+        <div class="flex justify-between items-center px-6 py-4 border-b border-neutral-800 flex-shrink-0">
+            <div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+                    <span class="text-white font-serif italic text-lg">Ask Wander AI</span>
+                </div>
+                <p class="text-[10px] text-neutral-600 uppercase tracking-widest mt-0.5">Modify your itinerary in plain language</p>
+            </div>
+            <button onclick="closeAIChat()" class="text-neutral-600 hover:text-white transition-colors text-lg">✕</button>
+        </div>
+        <!-- Messages -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto px-6 py-5 space-y-4 no-scrollbar"></div>
+        <!-- Quick Suggestions -->
+        <div class="px-6 pb-2 flex space-x-2 overflow-x-auto no-scrollbar flex-shrink-0" id="chat-suggestions">
+            <button onclick="useSuggestion(this)" class="flex-shrink-0 text-[10px] text-neutral-500 border border-neutral-800 hover:border-orange-500 hover:text-orange-400 px-3 py-1.5 rounded-full transition-colors whitespace-nowrap">🥗 Add vegetarian option</button>
+            <button onclick="useSuggestion(this)" class="flex-shrink-0 text-[10px] text-neutral-500 border border-neutral-800 hover:border-orange-500 hover:text-orange-400 px-3 py-1.5 rounded-full transition-colors whitespace-nowrap">💰 Find cheaper alternatives</button>
+            <button onclick="useSuggestion(this)" class="flex-shrink-0 text-[10px] text-neutral-500 border border-neutral-800 hover:border-orange-500 hover:text-orange-400 px-3 py-1.5 rounded-full transition-colors whitespace-nowrap">🏃 Add morning workout</button>
+            <button onclick="useSuggestion(this)" class="flex-shrink-0 text-[10px] text-neutral-500 border border-neutral-800 hover:border-orange-500 hover:text-orange-400 px-3 py-1.5 rounded-full transition-colors whitespace-nowrap">🛍️ More shopping time</button>
+            <button onclick="useSuggestion(this)" class="flex-shrink-0 text-[10px] text-neutral-500 border border-neutral-800 hover:border-orange-500 hover:text-orange-400 px-3 py-1.5 rounded-full transition-colors whitespace-nowrap">🌧️ Rainy day backup plan</button>
+        </div>
+        <!-- Input -->
+        <div class="px-6 py-4 border-t border-neutral-800 flex-shrink-0">
+            <div class="flex items-center space-x-4">
+                <input type="text" id="chat-input"
+                    placeholder='e.g. "Replace Day 2 dinner with a rooftop bar"'
+                    class="flex-1 bg-transparent text-white text-sm py-2 outline-none border-b border-neutral-800 focus:border-orange-500 transition-colors"
+                    onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); sendAIMessage(); }">
+                <button onclick="sendAIMessage()" id="chat-send-btn" class="text-orange-500 hover:text-white transition-colors text-xs uppercase tracking-widest font-bold flex-shrink-0">Send →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAP OVERLAY -->
+    <div id="map-overlay" class="fixed inset-0 hidden flex-col bg-[#0a0a0a]" style="z-index:48;">
+        <div class="flex justify-between items-center px-6 py-4 border-b border-neutral-800 flex-shrink-0">
+            <div>
+                <span class="font-serif italic text-xl text-white" id="map-title">Route Map</span>
+                <p class="text-[10px] text-neutral-500 uppercase tracking-widest mt-0.5" id="map-subtitle"></p>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="openGoogleMapsRoute()" id="gmaps-btn" class="hidden text-[10px] text-white bg-orange-500 hover:bg-orange-600 px-3 py-1.5 uppercase tracking-widest transition-colors">↗ Navigate</button>
+                <button onclick="toggleMap()" class="text-neutral-500 hover:text-white uppercase text-xs tracking-widest px-4 py-2 border border-neutral-800 hover:border-neutral-600 transition-colors">✕ Close</button>
+            </div>
+        </div>
+        <div id="leaflet-map"></div>
+    </div>
+
+    <!-- BUDGET TRACKER BAR -->
+    <div id="budget-bar" class="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur border-t border-neutral-800 px-6 py-3 hidden" style="z-index:44;">
+        <div class="max-w-md mx-auto">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-[10px] text-neutral-600 uppercase tracking-widest">Live Budget</span>
+                <span class="text-[10px] text-neutral-600" id="budget-pct">0% spent</span>
+            </div>
+            <div class="w-full bg-neutral-900 h-0.5 rounded-full mb-2">
+                <div id="budget-progress" class="h-0.5 bg-orange-500 rounded-full transition-all duration-500" style="width:0%"></div>
+            </div>
+            <div class="flex justify-between text-xs">
+                <span class="text-neutral-600">Budget <span id="total-budget-display" class="text-white font-bold">$0</span></span>
+                <span class="text-neutral-600">Spent <span id="spent-display" class="text-orange-500 font-bold">$0</span></span>
+                <span class="text-neutral-600">Left <span id="remaining-display" class="text-green-400 font-bold">$0</span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROFILE MODAL -->
+    <div id="profile-modal" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-[60] hidden flex items-center justify-center opacity-0 pointer-events-none">
+        <div class="w-full max-w-md bg-neutral-900 border border-neutral-800 p-8 space-y-6 m-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-neutral-800 pb-4">
+                <h2 class="text-xl font-serif italic text-white">Travel Profile</h2>
+                <button onclick="toggleProfileModal()" class="text-neutral-500 hover:text-white">✕</button>
+            </div>
+            <div class="space-y-4 text-sm text-neutral-300" id="profile-summary"></div>
+            <button onclick="resetProfile()" class="w-full py-3 border border-red-900 text-red-500 hover:bg-red-900/20 text-xs uppercase tracking-widest">Reset All & Start Over</button>
+        </div>
+    </div>
+
+    <script>
+        // === I18N CONFIG ===
+        let currentLang = 'English'; // Default
+        const TEXTS = {
+            'English': {
+                'home_q': 'Where do you <br> call <span class="accent-text">home</span>?',
+                'home_sub': 'Start typing to search global cities.',
+                'confirm_loc': 'Confirm Location',
+                'vibe_q': "What's your <br> <span class='accent-text'>vibe</span>?",
+                'move_q': "How do you <br> <span class='accent-text'>move</span>?",
+                'budget_q': "What's the <br> <span class='accent-text'>budget</span>?",
+                'flight_q': "Flight <br> <span class='accent-text'>trade-off</span>?",
+                'sports_q': "Active <br> <span class='accent-text'>lifestyle</span>?",
+                'shop_q': "Retail <br> <span class='accent-text'>therapy</span>?",
+                'finish': 'Finish Profile Setup',
+                'style_chill': '🐢 Chill & Relax',
+                'style_rush': '🐇 The "Special Forces"',
+                'transport_walk': '🚶 Citywalk',
+                'transport_transit': '🚇 Transit',
+                'transport_taxi': '🚕 Taxi',
+                'transport_drive': '🚗 Rental',
+                'budget_low': '💰 Budget Friendly ($)',
+                'budget_mid': '😊 Standard Comfort ($$)',
+                'budget_lux': '✨ Luxury & Indulge ($$$$)',
+                'confirm_flight': 'Confirm Priority',
+                'confirm_sports': 'Confirm Activities',
+                'ready': 'Ready for next adventure?',
+                'where_next': 'Where to next, <br> <span class="font-serif italic">Haoyang?</span>',
+                'dest_label': 'Destination',
+                'start_label': 'Start Date',
+                'dur_label': 'Duration (Days)',
+                'budget_label': 'Trip Budget',
+                'currency_label': 'Currency',
+                'create_btn': 'Create Itinerary',
+                'saved_trips': 'Saved Journeys',
+                'loading': 'Wander AI is thinking...',
+                'back': 'BACK'
+            },
+            'Chinese': {
+                'home_q': '您的 <br> <span class="accent-text">出发地</span> 是？',
+                'home_sub': '输入城市名称搜索...',
+                'confirm_loc': '确认地点',
+                'vibe_q': "您的旅行 <br> <span class='accent-text'>风格</span>？",
+                'move_q': "偏好哪种 <br> <span class='accent-text'>交通</span>？",
+                'budget_q': "您的 <br> <span class='accent-text'>预算</span>？",
+                'flight_q': "航班 <br> <span class='accent-text'>偏好</span>？",
+                'sports_q': "喜欢的 <br> <span class='accent-text'>运动</span>？",
+                'shop_q': "购物 <br> <span class='accent-text'>偏好</span>？",
+                'finish': '完成设置',
+                'style_chill': '🐢 慢游放松',
+                'style_rush': '🐇 特种兵打卡',
+                'transport_walk': '🚶 徒步逛街',
+                'transport_transit': '🚇 地铁公交',
+                'transport_taxi': '🚕 打车出行',
+                'transport_drive': '🚗 租车自驾',
+                'budget_low': '💰 经济实惠',
+                'budget_mid': '😊 舒适中档',
+                'budget_lux': '✨ 豪华享受',
+                'confirm_flight': '确认偏好',
+                'confirm_sports': '确认运动',
+                'ready': '准备好出发了吗？',
+                'where_next': '下一站去哪， <br> <span class="font-serif italic">老板？</span>',
+                'dest_label': '目的地',
+                'start_label': '出发日期',
+                'dur_label': '天数',
+                'budget_label': '总预算',
+                'currency_label': '货币',
+                'create_btn': '生成行程',
+                'saved_trips': '已保存行程',
+                'loading': 'Wander 正在为您定制行程...',
+                'back': '返回'
+            }
+        };
+
+        function toggleLanguage() {
+            currentLang = (currentLang === 'English') ? 'Chinese' : 'English';
+            document.getElementById('lang-switch').innerText = (currentLang === 'English') ? 'EN' : 'CN';
+            applyLanguage();
+        }
+
+        function applyLanguage() {
+            const t = TEXTS[currentLang];
+            const safe = (fn) => { try { fn(); } catch(e) {} };
+
+            // Setup views
+            safe(() => document.querySelector('#view-location h1').innerHTML = t.home_q);
+            safe(() => document.querySelector('#view-location p').innerText = t.home_sub);
+            safe(() => document.getElementById('btn-next-1').innerText = t.confirm_loc);
+            safe(() => document.querySelector('#view-style h1').innerHTML = t.vibe_q);
+            safe(() => document.querySelector('#view-transport h1').innerHTML = t.move_q);
+            safe(() => document.querySelector('#view-budget h1').innerHTML = t.budget_q);
+            safe(() => document.querySelector('#view-flight h1').innerHTML = t.flight_q);
+            safe(() => document.querySelector('#view-sports h1').innerHTML = t.sports_q);
+            safe(() => document.querySelector('#view-shopping h1').innerHTML = t.shop_q);
+
+            // Style choices
+            safe(() => {
+                const btns = document.querySelectorAll('#view-style .choice-card h3');
+                if (btns[0]) btns[0].innerText = t.style_chill;
+                if (btns[1]) btns[1].innerText = t.style_rush;
+            });
+            // Transport choices
+            safe(() => {
+                const btns = document.querySelectorAll('#view-transport .choice-card h3');
+                const keys = ['transport_walk','transport_transit','transport_taxi','transport_drive'];
+                btns.forEach((b, i) => { if(t[keys[i]]) b.innerText = t[keys[i]]; });
+            });
+            // Budget choices
+            safe(() => {
+                const btns = document.querySelectorAll('#view-budget .choice-card h3');
+                const keys = ['budget_low','budget_mid','budget_lux'];
+                btns.forEach((b, i) => { if(t[keys[i]]) b.innerText = t[keys[i]]; });
+            });
+            // Flight button
+            safe(() => { const fb = document.querySelector('#view-flight button[onclick]'); if(fb) fb.innerText = t.confirm_flight || 'Confirm Priority'; });
+            // Sports / Shopping buttons
+            safe(() => { const sb = document.querySelector('#view-sports button[onclick]'); if(sb) sb.innerText = t.confirm_sports || 'Confirm Activities'; });
+            safe(() => { const shb = document.querySelector('#view-shopping button[onclick]'); if(shb) shb.innerText = t.finish; });
+
+            // Dashboard
+            safe(() => document.querySelector('#view-dashboard p').innerText = t.ready);
+            safe(() => document.querySelector('#view-dashboard h1').innerHTML = t.where_next);
+            safe(() => document.getElementById('btn-create-itinerary').innerText = t.create_btn);
+            safe(() => document.querySelector('#recent-trips-section p').innerText = t.saved_trips);
+            // Dashboard labels
+            safe(() => {
+                const labels = document.querySelectorAll('#view-dashboard label');
+                if (labels[0]) labels[0].innerText = t.dest_label;
+                if (labels[1]) labels[1].innerText = t.start_label;
+                if (labels[2]) labels[2].innerText = t.dur_label;
+                if (labels[3]) labels[3].innerText = t.budget_label;
+                if (labels[4]) labels[4].innerText = t.currency_label || 'Currency';
+            });
+
+            // Loading
+            safe(() => document.querySelector('#view-loading h1').innerText = t.loading);
+            // Back
+            safe(() => document.querySelector('#btn-back').innerHTML = `<span>←</span> <span>${t.back}</span>`);
+        }
+
+        // === DATASETS ===
+        const GLOBAL_CITIES = [
+            "New York, USA", "Los Angeles, USA", "Chicago, USA", "Miami, USA", "San Francisco, USA", "Las Vegas, USA", "Seattle, USA", "Boston, USA", "Austin, USA",
+            "Toronto, Canada", "Vancouver, Canada", "Montreal, Canada", "Calgary, Canada", "London, Canada", "Ottawa, Canada", "Quebec City, Canada", "Banff, Canada",
+            "Mexico City, Mexico", "Cancun, Mexico", "Tulum, Mexico",
+            "London, UK", "Edinburgh, UK", "Manchester, UK", "Paris, France", "Nice, France", "Bordeaux, France", "Rome, Italy", "Milan, Italy", "Florence, Italy", "Venice, Italy",
+            "Berlin, Germany", "Munich, Germany", "Amsterdam, Netherlands", "Barcelona, Spain", "Madrid, Spain", "Ibiza, Spain", "Lisbon, Portugal", "Porto, Portugal",
+            "Zurich, Switzerland", "Geneva, Switzerland", "Vienna, Austria", "Prague, Czechia", "Budapest, Hungary", "Copenhagen, Denmark", "Stockholm, Sweden", "Oslo, Norway",
+            "Reykjavik, Iceland", "Dublin, Ireland", "Athens, Greece", "Santorini, Greece", "Mykonos, Greece",
+            "Tokyo, Japan", "Osaka, Japan", "Kyoto, Japan", "Sapporo, Japan", "Seoul, South Korea", "Busan, South Korea", "Jeju, South Korea",
+            "Beijing, China", "Shanghai, China", "Shenzhen, China", "Guangzhou, China", "Chengdu, China", "Hong Kong, China", "Macau, China", "Taipei, Taiwan",
+            "Bangkok, Thailand", "Phuket, Thailand", "Chiang Mai, Thailand", "Singapore", "Kuala Lumpur, Malaysia", "Bali, Indonesia", "Jakarta, Indonesia",
+            "Ho Chi Minh City, Vietnam", "Hanoi, Vietnam", "Manila, Philippines", "Mumbai, India", "Delhi, India", "Dubai, UAE", "Abu Dhabi, UAE", "Doha, Qatar",
+            "Sydney, Australia", "Melbourne, Australia", "Brisbane, Australia", "Gold Coast, Australia", "Auckland, New Zealand", "Queenstown, New Zealand",
+            "Sao Paulo, Brazil", "Rio de Janeiro, Brazil", "Buenos Aires, Argentina", "Lima, Peru", "Santiago, Chile", "Bogota, Colombia"
+        ];
+
+        const SPORTS_LIST = [
+            "Gym / Fitness", "Running", "Hiking", "Cycling", "Swimming", "Yoga", "Pilates", 
+            "Crossfit", "Boxing", "MMA", "Tennis", "Golf", "Basketball", "Football / Soccer", 
+            "Skiing", "Snowboarding", "Surfing", "Scuba Diving", "Snorkeling", "Kayaking", 
+            "Rock Climbing", "Bouldering", "Horse Riding", "Fencing", "Archery", "Badminton", 
+            "Table Tennis", "Volleyball", "Skateboarding", "Parkour", "Dance", "No Sports (Relax Only)"
+        ];
+
+        const SHOPPING_LIST = [
+            "Luxury Brands", "Streetwear", "Vintage / Thrift", "Sneakers", "Local Art & Design", 
+            "Tech & Gadgets", "Cameras", "Watches", "Jewelry", "Skincare & Beauty", "Perfume", 
+            "Antiques", "Furniture / Home", "Books / Rare Books", "Vinyl Records", "Anime / Manga", 
+            "Toys / Collectibles", "Traditional Crafts", "Souvenirs", "Gourmet Food", "Wine / Spirits",
+            "Department Stores", "Outlet Malls", "Flea Markets"
+        ];
+
+        let isEditingMode = false;
+        let currentData = { sports: [], tags: [] };
+        let savedTrips = [];
+
+        // Map & Budget state
+        let currentItineraryData = null;
+        let currentDayIndex = 0;
+        let totalBudgetAmount = 0;
+        let spentAmount = 0;
+        let leafletMap = null;
+        let mapLayers = [];
+
+        const countrySelect = document.getElementById('country');
+        const citySelect = document.getElementById('city');
+        const cityWrapper = document.getElementById('city-wrapper');
+        const homeSearch = document.getElementById('home-search');
+        const homeSuggestions = document.getElementById('home-suggestions');
+        const tripDest = document.getElementById('trip-dest');
+        const destSuggestions = document.getElementById('dest-suggestions');
+        const btnNext1 = document.getElementById('btn-next-1');
+        const btnBack = document.getElementById('btn-back');
+        const btnSaveEdit = document.getElementById('btn-save-edit');
+        const flightRange = document.getElementById('flight-range');
+        const flightDesc = document.getElementById('flight-desc');
+        const profileModal = document.getElementById('profile-modal');
+        const profileSummary = document.getElementById('profile-summary');
+
+        // === INIT ===
+        window.addEventListener('DOMContentLoaded', () => {
+            initApp();
+            populateSports();
+            populateShopping();
+        });
+
+        // === localStorage helpers ===
+        function lsGetProfile() { try { return JSON.parse(localStorage.getItem('wander_profile') || 'null'); } catch(e) { return null; } }
+        function lsSaveProfile(p) { localStorage.setItem('wander_profile', JSON.stringify(p)); }
+        function lsGetTrips() { try { return JSON.parse(localStorage.getItem('wander_trips') || '[]'); } catch(e) { return []; } }
+        function lsSaveTrips(t) { localStorage.setItem('wander_trips', JSON.stringify(t)); }
+
+        function initApp() {
+            const profile = lsGetProfile();
+            const trips = lsGetTrips();
+            if (profile && profile.location) {
+                currentData = profile;
+                savedTrips = trips;
+                renderSavedTrips(trips);
+                updateView(9);
+            }
+        }
+
+        // === DATA POPULATION ===
+        function populateSports() {
+            const container = document.getElementById('sports-container');
+            container.innerHTML = '';
+            SPORTS_LIST.forEach(sport => {
+                const btn = document.createElement('button');
+                btn.className = sport.includes("No Sports") ? "tag-btn border-neutral-600 text-neutral-400" : "tag-btn";
+                btn.innerText = sport;
+                btn.onclick = () => toggleSport(btn);
+                container.appendChild(btn);
+            });
+        }
+
+        function populateShopping() {
+            const container = document.getElementById('shopping-container');
+            container.innerHTML = '';
+            SHOPPING_LIST.forEach(item => {
+                const btn = document.createElement('button');
+                btn.className = "tag-btn";
+                btn.innerText = item;
+                btn.onclick = () => toggleTag(btn);
+                container.appendChild(btn);
+            });
+        }
+
+        // === AUTOCOMPLETE LOGIC ===
+        function setupAutocomplete(input, suggestionsBox) {
+            input.addEventListener('input', function() {
+                const val = this.value.toLowerCase();
+                suggestionsBox.innerHTML = '';
+                if (!val) {
+                    suggestionsBox.classList.add('hidden');
+                    return;
+                }
+                const matches = GLOBAL_CITIES.filter(c => c.toLowerCase().includes(val)).slice(0, 8); 
+                if (matches.length > 0) {
+                    suggestionsBox.classList.remove('hidden');
+                    matches.forEach(city => {
+                        const div = document.createElement('div');
+                        div.className = 'autocomplete-item';
+                        const regex = new RegExp(`(${val})`, 'gi');
+                        div.innerHTML = city.replace(regex, '<strong>$1</strong>');
+                        div.onclick = () => {
+                            input.value = city;
+                            suggestionsBox.classList.add('hidden');
+                        };
+                        suggestionsBox.appendChild(div);
+                    });
+                } else {
+                    suggestionsBox.classList.add('hidden');
+                }
+            });
+            document.addEventListener('click', function(e) {
+                if (e.target !== input && e.target !== suggestionsBox) {
+                    suggestionsBox.classList.add('hidden');
+                }
+            });
+        }
+
+        setupAutocomplete(homeSearch, homeSuggestions);
+        setupAutocomplete(tripDest, destSuggestions);
+
+        function renderSavedTrips(trips) {
+            const container = document.getElementById('recent-trips-container');
+            container.innerHTML = '';
+            if (!trips || trips.length === 0) {
+                container.innerHTML = '<div class="text-neutral-800 text-sm italic">No trips yet. Start planning!</div>';
+                return;
+            }
+            trips.forEach(trip => {
+                const div = document.createElement('div');
+                div.className = "relative flex-shrink-0 w-32 h-40 bg-neutral-900 border border-neutral-800 p-4 flex flex-col justify-end cursor-pointer hover:border-orange-500 transition-colors group";
+                div.onclick = () => { renderItinerary(trip); updateView(10); };
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = "absolute top-2 right-2 w-5 h-5 flex items-center justify-center text-neutral-700 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-xs";
+                deleteBtn.innerText = '✕';
+                deleteBtn.onclick = (e) => deleteTrip(trip.id, e);
+                div.innerHTML = `
+                    <span class="text-neutral-600 text-[10px] uppercase mb-1 group-hover:text-orange-500">${trip.summary?.date || '—'}</span>
+                    <span class="text-white font-serif italic text-lg leading-tight">${trip.summary?.city || trip.destination}</span>
+                    <span class="text-neutral-700 text-[10px] mt-1">${trip.summary?.duration || '?'} Days</span>
+                `;
+                div.appendChild(deleteBtn);
+                container.appendChild(div);
+            });
+        }
+
+        function deleteTrip(tripId, event) {
+            event.stopPropagation();
+            if (!confirm('Delete this trip?')) return;
+            savedTrips = savedTrips.filter(t => t.id !== tripId);
+            lsSaveTrips(savedTrips);
+            renderSavedTrips(savedTrips);
+        }
+
+        flightRange.addEventListener('input', (e) => {
+            const val = e.target.value;
+            const texts = ["", "Money saver. I don't mind 2+ stops.", "Value. 1 stop is okay to save $200.", "Balanced. Reasonable layovers only.", "Efficiency. Direct preferred unless crazy expensive.", "Direct Only. Time is money."];
+            flightDesc.innerText = texts[val] || texts[3];
+        });
+
+        function toggleSport(btn) {
+            btn.classList.toggle('selected');
+            const val = btn.innerText;
+            if(val.includes("No Sports")) {
+                if(btn.classList.contains('selected')) {
+                    document.querySelectorAll('#view-sports .tag-btn').forEach(b => { if(b !== btn) b.classList.remove('selected'); });
+                    currentData.sports = ["None"];
+                } else currentData.sports = [];
+            } else {
+                const noSportsBtn = Array.from(document.querySelectorAll('#view-sports .tag-btn')).find(b => b.innerText.includes("No Sports"));
+                if(noSportsBtn) noSportsBtn.classList.remove('selected');
+                if(btn.classList.contains('selected')) currentData.sports.push(val);
+                else currentData.sports = currentData.sports.filter(t => t !== val);
+            }
+        }
+        function toggleTag(btn) {
+            btn.classList.toggle('selected');
+            const tag = btn.innerText;
+            if(btn.classList.contains('selected')) currentData.tags.push(tag);
+            else currentData.tags = currentData.tags.filter(t => t !== tag);
+        }
+
+        function updateView(newStep) {
+            const oldViewId = getViewId(currentStep);
+            const newViewId = getViewId(newStep);
+            
+            if (newStep > 1 && newStep < 8 && !isEditingMode) {
+                btnBack.classList.remove('fade-exit-active');
+                btnBack.classList.add('fade-enter-active');
+            } else {
+                btnBack.classList.remove('fade-enter-active');
+                btnBack.classList.add('fade-exit-active');
+            }
+
+            if (isEditingMode) btnSaveEdit.classList.add('visible');
+            else btnSaveEdit.classList.remove('visible');
+
+            const oldView = document.getElementById(oldViewId);
+            const newView = document.getElementById(newViewId);
+
+            oldView.classList.add('fade-out');
+            setTimeout(() => {
+                oldView.classList.add('hidden');
+                oldView.classList.remove('fade-out');
+                newView.classList.remove('hidden');
+                currentStep = newStep;
+            }, 500);
+        }
+
+        function getViewId(step) {
+            if (step === 1) return 'view-location';
+            if (step === 2) return 'view-style';
+            if (step === 3) return 'view-transport';
+            if (step === 4) return 'view-budget';
+            if (step === 5) return 'view-flight';
+            if (step === 6) return 'view-sports';
+            if (step === 7) return 'view-shopping';
+            if (step === 8) return 'view-final';
+            if (step === 9) return 'view-dashboard';
+            if (step === 9.5) return 'view-loading'; 
+            if (step === 10) return 'view-itinerary';
+        }
+
+        let currentStep = 1;
+
+        function goBack() { if (currentStep > 1) updateView(currentStep - 1); }
+
+        btnNext1.addEventListener('click', () => {
+            if(!homeSearch.value) return; 
+            currentData.location = homeSearch.value;
+            if(isEditingMode) { saveAndReturn(); } else { updateView(2); }
+        });
+
+        function nextStep(stepIndex, value) {
+            if(stepIndex === 2) currentData.style = value;
+            if(stepIndex === 3) currentData.transport = value;
+            if(stepIndex === 4) currentData.budget = value;
+            if(stepIndex === 5) currentData.flight = value;
+            if(isEditingMode) { saveAndReturn(); } else { updateView(stepIndex + 1); }
+        }
+
+        function finishProfile() {
+            lsSaveProfile(currentData);
+            if(isEditingMode) { saveAndReturn(); }
+            else { updateView(8); setTimeout(() => { updateView(9); }, 2000); }
+        }
+
+        function toggleProfileModal() {
+            if(profileModal.classList.contains('hidden')) {
+                profileModal.classList.remove('hidden');
+                setTimeout(() => { profileModal.classList.remove('opacity-0'); profileModal.classList.remove('pointer-events-none'); }, 10);
+                renderProfileSummary();
+            } else {
+                profileModal.classList.add('opacity-0');
+                profileModal.classList.add('pointer-events-none');
+                setTimeout(() => { profileModal.classList.add('hidden'); }, 300);
+            }
+        }
+
+        function renderProfileSummary() {
+            const styleMap = { chill: '🐢 Chill & Relax', rush: '🐇 Special Forces' };
+            const transportMap = { walk: '🚶 Citywalk', transit: '🚇 Transit', taxi: '🚕 Taxi', drive: '🚗 Rental' };
+            const budgetMap = { budget: '💰 Budget ($)', standard: '😊 Standard ($$)', luxury: '✨ Luxury ($$$$)' };
+            const flightMap = { '1': 'Money saver (2+ stops)', '2': 'Value (1 stop ok)', '3': 'Balanced', '4': 'Efficiency (direct pref)', '5': 'Direct Only' };
+            const d = currentData;
+            const rows = [
+                { label: 'Home City', value: d.location || '—', step: 1 },
+                { label: 'Travel Vibe', value: styleMap[d.style] || d.style || '—', step: 2 },
+                { label: 'Transport', value: transportMap[d.transport] || d.transport || '—', step: 3 },
+                { label: 'Budget Level', value: budgetMap[d.budget] || d.budget || '—', step: 4 },
+                { label: 'Flight Pref', value: flightMap[d.flight] || d.flight || '—', step: 5 },
+                { label: 'Sports', value: (d.sports && d.sports.length > 0) ? d.sports.join(', ') : 'None', step: 6 },
+                { label: 'Shopping', value: (d.tags && d.tags.length > 0) ? d.tags.join(', ') : 'None', step: 7 },
+            ];
+            profileSummary.innerHTML = rows.map(r => `
+                <div class="flex justify-between items-start py-2 border-b border-neutral-800 group cursor-pointer hover:border-orange-900" onclick="jumpToEdit(${r.step})">
+                    <span class="text-neutral-500 text-xs uppercase tracking-widest w-24 flex-shrink-0">${r.label}</span>
+                    <span class="text-neutral-200 text-xs text-right flex-1 ml-4">${r.value}</span>
+                    <span class="text-neutral-700 group-hover:text-orange-500 ml-3 text-xs transition-colors">✎</span>
+                </div>
+            `).join('');
+        }
+
+        function jumpToEdit(step) {
+            isEditingMode = true;
+            toggleProfileModal();
+            setTimeout(() => {
+                const dashboard = document.getElementById('view-dashboard');
+                const targetViewId = getViewId(step);
+                const targetView = document.getElementById(targetViewId);
+                dashboard.classList.add('fade-out');
+                setTimeout(() => {
+                    dashboard.classList.add('hidden');
+                    dashboard.classList.remove('fade-out');
+                    targetView.classList.remove('hidden');
+                    currentStep = step;
+                    btnSaveEdit.classList.add('visible');
+                    btnBack.classList.remove('fade-enter-active');
+                    btnBack.classList.add('fade-exit-active');
+                }, 500);
+            }, 300);
+        }
+
+        function saveAndReturn() {
+            if(currentStep === 1) currentData.location = homeSearch.value;
+            lsSaveProfile(currentData);
+            const currentViewId = getViewId(currentStep);
+            const currentView = document.getElementById(currentViewId);
+            const dashboard = document.getElementById('view-dashboard');
+            isEditingMode = false;
+            btnSaveEdit.classList.remove('visible');
+            currentView.classList.add('fade-out');
+            setTimeout(() => {
+                currentView.classList.add('hidden');
+                currentView.classList.remove('fade-out');
+                dashboard.classList.remove('hidden');
+                currentStep = 9;
+                setTimeout(() => toggleProfileModal(), 600);
+            }, 500);
+        }
+
+        function resetProfile() { localStorage.clear(); location.reload(); }
+
+        // === REAL FLIGHT SEARCH (Amadeus) ===
+        async function searchRealFlights() {
+            const dest = document.getElementById('trip-dest').value.trim();
+            const date = document.getElementById('trip-date').value;
+            const origin = currentData.location || 'Toronto, Canada';
+            if (!dest) { alert('Enter a destination first!'); return; }
+            if (!date) { alert('Please select a departure date to search flights.'); return; }
+
+            const section = document.getElementById('flights-section');
+            const result = document.getElementById('flights-result');
+            section.classList.remove('hidden');
+            result.innerHTML = '<div class="text-neutral-600 text-xs italic animate-pulse">Searching real flights...</div>';
+
+            try {
+                const params = new URLSearchParams({ from: origin, to: dest, date: date });
+                const r = await fetch(`/api/flights?${params}`);
+                const data = await r.json();
+
+                if (data.error) {
+                    result.innerHTML = data.hint
+                        ? `<div class="text-neutral-600 text-xs">${data.hint}</div>`
+                        : `<div class="text-red-500 text-xs">❌ ${data.error}</div>`;
+                    return;
+                }
+                if (!data.flights || data.flights.length === 0) {
+                    result.innerHTML = '<div class="text-neutral-600 text-xs">No flights found for this route/date.</div>';
+                    return;
+                }
+                result.innerHTML = data.flights.map(f => `
+                    <div class="glass-card border border-neutral-800 p-3 flex justify-between items-center hover:border-orange-500 transition-colors cursor-pointer" onclick="selectFlight('${f.flight_num}','${f.from}→${f.to}','${f.duration}','${f.price}','${f.class}','${f.stops} stop${f.stops!=='1'?'s':''}')">
+                        <div>
+                            <span class="text-white text-sm font-bold">${f.flight_num}</span>
+                            <span class="text-neutral-500 text-xs ml-2">${f.from} → ${f.to}</span>
+                            <div class="text-neutral-600 text-[10px] mt-0.5">${f.depart.slice(11,16)} · ${f.duration} · ${f.stops === 0 ? 'Direct' : f.stops + ' stop'} · ${f.class}</div>
+                        </div>
+                        <div class="text-orange-500 font-bold text-sm">${f.price}</div>
+                    </div>
+                `).join('');
+            } catch(e) {
+                result.innerHTML = `<div class="text-neutral-600 text-xs">Could not connect to flight service.</div>`;
+            }
+        }
+
+        let selectedFlight = null;
+        function selectFlight(num, route, duration, price, cls, stops) {
+            selectedFlight = { flight_num: num, route, duration, price, class: cls, stops };
+            // Visual feedback
+            document.querySelectorAll('#flights-result .glass-card').forEach(el => el.style.borderColor = '');
+            event.currentTarget.style.borderColor = '#ff5e00';
+            document.getElementById('btn-create-itinerary').innerText = `Create Itinerary  (${price} flight selected)`;
+        }
+
+        async function startPlanning() {
+            const dest = document.getElementById('trip-dest').value;
+            const date = document.getElementById('trip-date').value;
+            const days = document.getElementById('trip-days').value;
+            const budget = document.getElementById('trip-budget').value;
+            
+            if(!dest) { alert("Please enter destination!"); return; }
+            
+            document.getElementById('loading-city').innerText = dest;
+            updateView(9.5); 
+
+            // Pass language + currency to backend
+            const currencySel = document.getElementById('trip-currency');
+            const selectedCurrency = currencySel ? currencySel.value : 'USD';
+            const payload = {
+                profile: currentData,
+                request: {
+                    destination: dest,
+                    start_date: date,
+                    duration: days,
+                    budget: budget,
+                    currency: selectedCurrency,
+                    language: currentLang,
+                    confirmed_flight: selectedFlight || null
+                }
+            };
+
+            try {
+                const response = await fetch('/api/plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                if(data.error) {
+                    alert("AI Brain Error: " + data.error);
+                    updateView(9);
+                    return;
+                }
+
+                renderItinerary(data);
+                savedTrips.unshift(data);
+                lsSaveTrips(savedTrips);
+                renderSavedTrips(savedTrips);
+                setTimeout(() => { updateView(10); }, 1000);
+
+            } catch (err) {
+                console.error(err);
+                alert("Server Error! Is server.py running?");
+                updateView(9);
+            }
+        }
+
+        // Fetch high-quality city image from Wikipedia (free, no API key)
+        async function fetchCityImage(city) {
+            const cleanCity = city.split(',')[0].trim();
+            try {
+                const r = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanCity)}`, { signal: AbortSignal.timeout(5000) });
+                const data = await r.json();
+                const src = data.thumbnail?.source;
+                if (src) return src.replace(/\/\d+px-/, '/1200px-');
+            } catch(e) {}
+            // Fallback: Unsplash source (still works, rate-limited but fine for low traffic)
+            return `https://source.unsplash.com/1600x900/?${encodeURIComponent(cleanCity)},travel,city`;
+        }
+
+        function renderItinerary(data) {
+            currentItineraryData = data;
+            currentDayIndex = 0;
+            spentAmount = 0;
+
+            document.getElementById('itinerary-title').innerText = data.destination;
+            const cleanCity = data.destination.split(',')[0].trim();
+
+            // Set placeholder gradient while image loads
+            const bgEl = document.getElementById('itinerary-bg');
+            bgEl.style.backgroundImage = 'linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%)';
+            fetchCityImage(data.destination).then(url => {
+                const img = new Image();
+                img.onload = () => { bgEl.style.backgroundImage = `url('${url}')`; };
+                img.src = url;
+            });
+            
+            const daysCount = data.days.length;
+            document.getElementById('itinerary-meta').innerText = `Generated Trip • ${daysCount} Days`;
+
+            // Logistics
+            const logCard = document.getElementById('logistics-card');
+            if (data.flight || data.budget_summary) {
+                logCard.classList.remove('hidden');
+                if(data.flight) {
+                    document.getElementById('log-flight').innerHTML = `<span class="text-orange-500 font-bold">${data.flight.airline} ${data.flight.flight_num}</span> • ${data.flight.route} <br><span class="text-neutral-500">${data.flight.class} • ${data.flight.price}</span>`;
+                }
+                if(data.hotel) {
+                    document.getElementById('log-hotel').innerHTML = `<span class="text-white">${data.hotel.name}</span> (${data.hotel.rating}) <br><span class="text-neutral-500">${data.hotel.price_per_night}/night • Total: ${data.hotel.total_stay}</span>`;
+                }
+                if(data.logistics && data.logistics.transport_tip) document.getElementById('log-transport').innerText = data.logistics.transport_tip;
+                if(data.budget_summary) document.getElementById('log-budget').innerText = `Flight: ${data.budget_summary.flight} | Stay: ${data.budget_summary.stay} | Total: ${data.budget_summary.total}`;
+            } else {
+                logCard.classList.add('hidden');
+            }
+
+            const tabsContainer = document.getElementById('day-tabs');
+            tabsContainer.innerHTML = ''; 
+            data.days.forEach((day, index) => {
+                const btn = document.createElement('button');
+                btn.className = `text-sm whitespace-nowrap transition-colors ${index === 0 ? 'text-orange-500 font-bold' : 'text-neutral-500 hover:text-white'}`;
+                btn.innerText = day.day;
+                btn.onclick = () => switchDay(index, data.days);
+                tabsContainer.appendChild(btn);
+            });
+
+            renderTimeline(data.days[0].activities);
+
+            // Setup budget bar
+            const budgetInput = document.getElementById('trip-budget').value;
+            totalBudgetAmount = budgetInput ? parseFloat(budgetInput) : parseCostNum(data.budget_summary?.total || '0');
+            document.getElementById('total-budget-display').innerText = '$' + totalBudgetAmount.toFixed(0);
+            document.getElementById('spent-display').innerText = '$0';
+            document.getElementById('remaining-display').innerText = '$' + totalBudgetAmount.toFixed(0);
+            document.getElementById('budget-progress').style.width = '0%';
+            document.getElementById('budget-pct').innerText = '0% spent';
+            document.getElementById('budget-bar').classList.remove('hidden');
+        }
+
+        function switchDay(dayIndex, allDays) {
+            currentDayIndex = dayIndex;
+            const tabs = document.getElementById('day-tabs').children;
+            for(let i=0; i<tabs.length; i++) {
+                if(i === dayIndex) {
+                    tabs[i].className = 'text-orange-500 font-bold text-sm whitespace-nowrap';
+                } else {
+                    tabs[i].className = 'text-neutral-500 hover:text-white text-sm whitespace-nowrap transition-colors';
+                }
+            }
+            renderTimeline(allDays[dayIndex].activities);
+            // Refresh map if open
+            const mapOverlay = document.getElementById('map-overlay');
+            if (!mapOverlay.classList.contains('hidden')) {
+                renderMapForDay(dayIndex);
+            }
+        }
+
+        function renderTimeline(activities) {
+            const container = document.getElementById('timeline-container');
+            container.innerHTML = '';
+            activities.forEach((act, idx) => {
+                const div = document.createElement('div');
+                div.className = `timeline-item slide-up`;
+                div.style.animationDelay = `${idx * 0.1}s`;
+
+                const costStr = act.cost || '';
+                const isFree = costStr === '0' || costStr.toLowerCase() === 'free' || costStr === '';
+                const costDisplay = isFree ? 'Free' : costStr;
+                const costBadge = costStr !== '' ? `<span class="cost-badge ${isFree ? 'free' : ''}">${costDisplay}</span>` : '';
+
+                const checkBtn = `<button onclick="toggleCheck(this, '${costStr.replace(/'/g,"\\'")}') " class="check-btn absolute left-4 top-4 w-6 h-6 rounded-full border border-neutral-700 flex items-center justify-center text-[10px] text-neutral-600 hover:border-orange-500 hover:text-orange-400 transition-colors flex-shrink-0">✓</button>`;
+                const navBtn = act.nav_link ? `<a href="${act.nav_link}" target="_blank" onclick="event.stopPropagation()" class="absolute right-4 top-4 text-neutral-500 hover:text-orange-500 transition-colors text-sm">📍</a>` : '';
+
+                const transitHtml = act.transit ? `<div class="mb-3 pl-3 border-l-2 border-orange-500/30 text-[10px] text-neutral-500 italic leading-relaxed">🚌 ${act.transit}</div>` : '';
+                const addressHtml = act.address ? `<div class="text-[10px] text-neutral-600 mt-1 mb-2">📌 ${act.address}</div>` : '';
+                const durationHtml = act.duration ? `<span class="text-[10px] text-neutral-600">⏱ ${act.duration}</span>` : '';
+                const whatToDoHtml = act.what_to_do ? `<div class="mt-2 text-[11px] text-neutral-300 leading-relaxed border-l-2 border-neutral-700 pl-2">${act.what_to_do}</div>` : '';
+                const photoHtml = act.photo_spot ? `<div class="mt-2 text-[10px] text-purple-400">📸 ${act.photo_spot}</div>` : '';
+                const proTipHtml = act.pro_tip ? `<div class="mt-2 pt-2 border-t border-neutral-800/50 text-[10px] text-orange-400 leading-relaxed">💡 ${act.pro_tip}</div>` : '';
+
+                div.innerHTML = `
+                    <div class="timeline-dot"></div>
+                    <span class="absolute left-[-10px] top-[-20px] text-[10px] text-neutral-500 font-mono">${act.time}</span>
+                    ${transitHtml}
+                    <div class="activity-card glass-card p-4 pl-12 pr-10 hover:bg-neutral-900/30 transition-colors group border border-neutral-800/60 relative">
+                        ${checkBtn}
+                        ${navBtn}
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[10px] ${act.color || 'text-neutral-500'} uppercase tracking-widest">${act.tag}</span>
+                            <div class="flex items-center gap-2">${durationHtml}${costBadge}</div>
+                        </div>
+                        <h3 class="font-serif text-lg italic text-white mb-0.5 leading-tight">${act.title}</h3>
+                        ${addressHtml}
+                        <p class="text-xs text-neutral-400 leading-relaxed">${act.desc}</p>
+                        ${whatToDoHtml}
+                        ${photoHtml}
+                        ${proTipHtml}
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function closeItinerary() {
+            const itin = document.getElementById('view-itinerary');
+            const dash = document.getElementById('view-dashboard');
+            document.getElementById('budget-bar').classList.add('hidden');
+            const mapOverlay = document.getElementById('map-overlay');
+            mapOverlay.classList.add('hidden');
+            mapOverlay.classList.remove('flex');
+            itin.classList.add('fade-out');
+            setTimeout(() => {
+                itin.classList.add('hidden');
+                itin.classList.remove('fade-out');
+                dash.classList.remove('hidden');
+                currentStep = 9;
+            }, 500);
+        }
+
+        // === AI CHAT FUNCTIONS ===
+        function openAIChat() {
+            const panel = document.getElementById('ai-chat-panel');
+            panel.classList.remove('hidden');
+            panel.style.display = 'flex';
+            panel.style.flexDirection = 'column';
+            requestAnimationFrame(() => { requestAnimationFrame(() => { panel.classList.add('open'); }); });
+            if (document.getElementById('chat-messages').children.length === 0) {
+                addChatBubble('ai', `Hi! I'm your Wander AI concierge ✨<br><br>Tell me what you'd like to change about your <strong style="color:#ff5e00">${currentItineraryData?.destination || 'trip'}</strong> — swap a restaurant, adjust timing, add an activity, go cheaper, or anything else. I'll update your itinerary on the spot.`);
+            }
+            setTimeout(() => document.getElementById('chat-input').focus(), 420);
+        }
+
+        function closeAIChat() {
+            const panel = document.getElementById('ai-chat-panel');
+            panel.classList.remove('open');
+            setTimeout(() => { panel.classList.add('hidden'); panel.style.display = ''; }, 400);
+        }
+
+        function useSuggestion(btn) {
+            document.getElementById('chat-input').value = btn.innerText.replace(/^[^\s]+\s/, '');
+            document.getElementById('chat-input').focus();
+        }
+
+        function addChatBubble(type, html) {
+            const container = document.getElementById('chat-messages');
+            const wrapper = document.createElement('div');
+            wrapper.className = type === 'user' ? 'flex justify-end' : 'flex justify-start';
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble-${type} text-xs px-4 py-3 max-w-[85%] leading-relaxed`;
+            bubble.innerHTML = html;
+            wrapper.appendChild(bubble);
+            container.appendChild(wrapper);
+            container.scrollTop = container.scrollHeight;
+            return bubble;
+        }
+
+        async function sendAIMessage() {
+            const input = document.getElementById('chat-input');
+            const msg = input.value.trim();
+            if (!msg || !currentItineraryData) return;
+
+            input.value = '';
+            document.getElementById('chat-send-btn').disabled = true;
+            document.getElementById('chat-suggestions').style.opacity = '0.3';
+
+            addChatBubble('user', msg);
+            const thinkingBubble = addChatBubble('ai', '<span class="thinking-dots">Updating your itinerary</span>');
+
+            try {
+                const res = await fetch('/api/adjust', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        itinerary: currentItineraryData,
+                        request: msg,
+                        language: currentLang
+                    })
+                });
+                const result = await res.json();
+                if (result.error) throw new Error(result.error);
+
+                // Apply changed days surgically
+                if (result.changed_days && result.days) {
+                    result.changed_days.forEach((dayIdx, i) => {
+                        if (currentItineraryData.days[dayIdx] && result.days[i]) {
+                            currentItineraryData.days[dayIdx] = result.days[i];
+                        }
+                    });
+                    // Re-render if affected day is currently shown
+                    if (result.changed_days.includes(currentDayIndex)) {
+                        renderTimeline(currentItineraryData.days[currentDayIndex].activities);
+                    }
+                    // Highlight changed day tabs
+                    const tabs = document.getElementById('day-tabs').children;
+                    result.changed_days.forEach(idx => {
+                        if (tabs[idx]) {
+                            tabs[idx].style.color = '#ff5e00';
+                            setTimeout(() => { tabs[idx].style.color = ''; }, 3000);
+                        }
+                    });
+                }
+
+                const changedDayNames = (result.changed_days || []).map(i => `Day ${i+1}`).join(', ');
+                thinkingBubble.innerHTML = `✅ <strong style="color:#ff5e00">${result.change_summary || 'Updated!'}</strong>${changedDayNames ? `<span style="color:#555;font-size:10px;display:block;margin-top:4px;">Modified: ${changedDayNames}</span>` : ''}${result.detail ? `<span style="color:#888;display:block;margin-top:6px;">${result.detail}</span>` : ''}`;
+
+            } catch(e) {
+                thinkingBubble.innerHTML = `❌ Hmm, couldn't process that. Try rephrasing, or be more specific (e.g. "Replace Day 2 dinner with a Korean BBQ restaurant").`;
+                console.error('AI adjust error:', e);
+            } finally {
+                document.getElementById('chat-send-btn').disabled = false;
+                document.getElementById('chat-suggestions').style.opacity = '';
+            }
+        }
+
+        // === MAP FUNCTIONS ===
+        function toggleMap() {
+            const overlay = document.getElementById('map-overlay');
+            const isHidden = overlay.classList.contains('hidden');
+            if (isHidden) {
+                overlay.classList.remove('hidden');
+                overlay.classList.add('flex');
+                setTimeout(() => {
+                    if (!leafletMap) {
+                        leafletMap = L.map('leaflet-map', { zoomControl: true, attributionControl: false });
+                        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                            maxZoom: 19
+                        }).addTo(leafletMap);
+                    }
+                    if (currentItineraryData) renderMapForDay(currentDayIndex);
+                    leafletMap.invalidateSize();
+                }, 150);
+            } else {
+                overlay.classList.add('hidden');
+                overlay.classList.remove('flex');
+            }
+        }
+
+        // Generate Google Maps multi-waypoint navigation URL (no API key needed)
+        function openGoogleMapsRoute() {
+            if (!currentItineraryData) return;
+            const day = currentItineraryData.days[currentDayIndex];
+            if (!day) return;
+            const valid = day.activities.filter(a => a.lat && a.lng);
+            if (valid.length === 0) { alert('No GPS coordinates available for this day. Try generating a new trip.'); return; }
+            if (valid.length === 1) {
+                window.open(`https://www.google.com/maps/search/?api=1&query=${valid[0].lat},${valid[0].lng}`, '_blank');
+                return;
+            }
+            const origin = `${valid[0].lat},${valid[0].lng}`;
+            const destination = `${valid[valid.length-1].lat},${valid[valid.length-1].lng}`;
+            const waypoints = valid.slice(1, -1).map(a => `${a.lat},${a.lng}`).join('|');
+            const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}${waypoints ? '&waypoints=' + waypoints : ''}&travelmode=walking`;
+            window.open(url, '_blank');
+        }
+
+        async function renderMapForDay(dayIndex) {
+            if (!leafletMap || !currentItineraryData) return;
+            mapLayers.forEach(l => leafletMap.removeLayer(l));
+            mapLayers = [];
+
+            const day = currentItineraryData.days[dayIndex];
+            if (!day) return;
+
+            document.getElementById('map-title').innerText = currentItineraryData.destination;
+            document.getElementById('map-subtitle').innerText = `${day.day}${day.theme ? ' · ' + day.theme : ''}`;
+
+            const valid = day.activities.filter(a => a.lat && a.lng && Math.abs(a.lat) <= 90 && Math.abs(a.lng) <= 180);
+
+            // Show/hide Google Maps navigate button
+            const gmapsBtn = document.getElementById('gmaps-btn');
+            gmapsBtn.classList.toggle('hidden', valid.length === 0);
+
+            if (valid.length === 0) {
+                document.getElementById('map-subtitle').innerText += '  — No GPS data (regenerate trip to get map)';
+                return;
+            }
+
+            const bounds = [];
+            valid.forEach((act, i) => {
+                const icon = L.divIcon({
+                    className: '',
+                    html: `<div style="background:#ff5e00;color:white;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;box-shadow:0 0 12px rgba(255,94,0,0.6);border:2px solid rgba(255,255,255,0.15);">${i+1}</div>`,
+                    iconSize: [30, 30], iconAnchor: [15, 15]
+                });
+                const costStr = act.cost && act.cost !== '0' ? `<span style="color:#ff5e00;font-size:11px;">${act.cost}</span>` : '';
+                const addressStr = act.address ? `<div style="color:#555;font-size:10px;margin-top:3px;">${act.address}</div>` : '';
+                const marker = L.marker([act.lat, act.lng], { icon })
+                    .addTo(leafletMap)
+                    .bindPopup(`<div style="min-width:170px;"><strong style="color:#ff5e00;font-size:12px;">${act.time}</strong> ${costStr}<br><span style="font-size:14px;color:#eee;font-style:italic;">${act.title}</span>${addressStr}<br><em style="color:#666;font-size:10px;">${(act.desc||'').substring(0, 80)}...</em></div>`);
+                mapLayers.push(marker);
+                bounds.push([act.lat, act.lng]);
+            });
+
+            // Draw styled connector line between markers
+            if (bounds.length > 1) {
+                const line = L.polyline(bounds, { color: '#ff5e00', weight: 2, opacity: 0.4, dashArray: '6, 10' }).addTo(leafletMap);
+                mapLayers.push(line);
+                leafletMap.fitBounds(bounds, { padding: [50, 50] });
+            } else {
+                leafletMap.setView(bounds[0], 14);
+            }
+        }
+
+        // === BUDGET FUNCTIONS ===
+        function parseCostNum(str) {
+            if (!str) return 0;
+            const s = str.trim().toLowerCase();
+            if (s === 'free' || s === '免费' || s === 'gratis') return 0;
+            // Handle European decimal format: "10,50" → 10.5 (if comma followed by 1-2 digits at end)
+            let clean = str.replace(/[£$€¥₩฿₹CHF A-Za-z]/g, '').trim();
+            if (/,\d{1,2}$/.test(clean) && !clean.includes('.')) {
+                // European decimal: "10,50" → "10.50"
+                clean = clean.replace(',', '.');
+            } else {
+                // US format: remove thousand-separator commas
+                clean = clean.replace(/,/g, '');
+            }
+            const n = parseFloat(clean);
+            return isNaN(n) ? 0 : n;
+        }
+
+        function updateCurrencySymbol() {
+            const sel = document.getElementById('trip-currency');
+            const sym = sel.options[sel.selectedIndex].getAttribute('data-symbol') || '$';
+            document.getElementById('currency-symbol').innerText = sym;
+        }
+
+        function toggleCheck(btn, costStr) {
+            const card = btn.closest('.activity-card');
+            const isChecked = btn.classList.contains('checked');
+            const cost = parseCostNum(costStr);
+            if (isChecked) {
+                btn.classList.remove('checked');
+                card.classList.remove('activity-done');
+                spentAmount = Math.max(0, spentAmount - cost);
+            } else {
+                btn.classList.add('checked');
+                card.classList.add('activity-done');
+                spentAmount += cost;
+            }
+            updateBudgetBar();
+        }
+
+        function updateBudgetBar() {
+            const remaining = Math.max(0, totalBudgetAmount - spentAmount);
+            document.getElementById('spent-display').innerText = '$' + spentAmount.toFixed(0);
+            document.getElementById('remaining-display').innerText = '$' + remaining.toFixed(0);
+            const pct = totalBudgetAmount > 0 ? Math.min(100, (spentAmount / totalBudgetAmount) * 100) : 0;
+            document.getElementById('budget-progress').style.width = pct.toFixed(1) + '%';
+            const color = pct > 80 ? '#ef4444' : pct > 60 ? '#f97316' : '#ff5e00';
+            document.getElementById('budget-progress').style.background = color;
+            document.getElementById('budget-pct').innerText = pct.toFixed(0) + '% spent';
+        }
+
+        function toggleFab() {
+            const menu = document.getElementById('fab-menu');
+            const main = document.getElementById('fab-main');
+            if (menu.classList.contains('opacity-0')) {
+                menu.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-10');
+                main.style.transform = 'rotate(45deg)';
+            } else {
+                menu.classList.add('opacity-0', 'pointer-events-none', 'translate-y-10');
+                main.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function fabAction(action) {
+            toggleFab();
+            setTimeout(() => {
+                if (action === 'add') {
+                    const time = prompt("Time:", "04:00 PM"); if(!time) return;
+                    const title = prompt("Activity:");
+                    const desc = prompt("Description:");
+                    const container = document.getElementById('timeline-container');
+                    const div = document.createElement('div');
+                    div.className = `timeline-item slide-up`;
+                    div.innerHTML = `<div class="timeline-dot"></div><span class="absolute left-[-10px] top-[-20px] text-[10px] text-neutral-500 font-mono">${time}</span><div class="glass-card p-4 border border-orange-500/30"><h3 class="font-serif text-xl italic text-white mb-1">${title}</h3><p class="text-xs text-neutral-400">${desc}</p></div>`;
+                    container.appendChild(div);
+                } else if (action === 'share') { window.print(); }
+                else if (action === 'ask') { openAIChat(); }
+            }, 200);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.env
+wander_db.json
+.DS_Store
+*.log
