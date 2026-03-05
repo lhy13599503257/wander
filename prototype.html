@@ -827,29 +827,76 @@
         }
 
         // === AUTOCOMPLETE LOGIC ===
+        // 中文城市名对照表
+        const CHINESE_CITIES = {
+            '纽约':'New York, USA','洛杉矶':'Los Angeles, USA','芝加哥':'Chicago, USA',
+            '迈阿密':'Miami, USA','旧金山':'San Francisco, USA','拉斯维加斯':'Las Vegas, USA',
+            '西雅图':'Seattle, USA','波士顿':'Boston, USA','奥斯汀':'Austin, USA',
+            '多伦多':'Toronto, Canada','温哥华':'Vancouver, Canada','蒙特利尔':'Montreal, Canada',
+            '巴黎':'Paris, France','尼斯':'Nice, France','罗马':'Rome, Italy',
+            '米兰':'Milan, Italy','威尼斯':'Venice, Italy','佛罗伦萨':'Florence, Italy',
+            '伦敦':'London, UK','巴塞罗那':'Barcelona, Spain','马德里':'Madrid, Spain',
+            '伊维萨':'Ibiza, Spain','里斯本':'Lisbon, Portugal','阿姆斯特丹':'Amsterdam, Netherlands',
+            '柏林':'Berlin, Germany','慕尼黑':'Munich, Germany','苏黎世':'Zurich, Switzerland',
+            '维也纳':'Vienna, Austria','布拉格':'Prague, Czechia','布达佩斯':'Budapest, Hungary',
+            '哥本哈根':'Copenhagen, Denmark','斯德哥尔摩':'Stockholm, Sweden','奥斯陆':'Oslo, Norway',
+            '雷克雅未克':'Reykjavik, Iceland','都柏林':'Dublin, Ireland','雅典':'Athens, Greece',
+            '圣托里尼':'Santorini, Greece','米科诺斯':'Mykonos, Greece',
+            '东京':'Tokyo, Japan','大阪':'Osaka, Japan','京都':'Kyoto, Japan','札幌':'Sapporo, Japan',
+            '首尔':'Seoul, South Korea','釜山':'Busan, South Korea','济州':'Jeju, South Korea',
+            '北京':'Beijing, China','上海':'Shanghai, China','深圳':'Shenzhen, China',
+            '广州':'Guangzhou, China','成都':'Chengdu, China','香港':'Hong Kong, China',
+            '澳门':'Macau, China','台北':'Taipei, Taiwan',
+            '曼谷':'Bangkok, Thailand','普吉':'Phuket, Thailand','清迈':'Chiang Mai, Thailand',
+            '新加坡':'Singapore','吉隆坡':'Kuala Lumpur, Malaysia','巴厘岛':'Bali, Indonesia',
+            '河内':'Hanoi, Vietnam','胡志明市':'Ho Chi Minh City, Vietnam',
+            '马尼拉':'Manila, Philippines','孟买':'Mumbai, India','新德里':'Delhi, India',
+            '迪拜':'Dubai, UAE','多哈':'Doha, Qatar','伊斯坦布尔':'Istanbul, Turkey',
+            '悉尼':'Sydney, Australia','墨尔本':'Melbourne, Australia','奥克兰':'Auckland, New Zealand',
+            '皇后镇':'Queenstown, New Zealand','里约热内卢':'Rio de Janeiro, Brazil',
+            '布宜诺斯艾利斯':'Buenos Aires, Argentina','墨西哥城':'Mexico City, Mexico',
+            '坎昆':'Cancun, Mexico',
+        };
+
         function setupAutocomplete(input, suggestionsBox) {
             input.addEventListener('input', function() {
-                const val = this.value.toLowerCase();
+                const val = this.value.trim();
                 suggestionsBox.innerHTML = '';
-                if (!val) {
-                    suggestionsBox.classList.add('hidden');
-                    return;
+                if (!val) { suggestionsBox.classList.add('hidden'); return; }
+
+                // Check if input contains Chinese characters
+                const isChinese = /[\u4e00-\u9fa5]/.test(val);
+                let matches = [];
+
+                if (isChinese) {
+                    // Search Chinese city names
+                    matches = Object.entries(CHINESE_CITIES)
+                        .filter(([zh]) => zh.includes(val))
+                        .map(([zh, en]) => ({ display: `${zh} — ${en}`, value: en }))
+                        .slice(0, 8);
+                } else {
+                    // Search English city names
+                    matches = GLOBAL_CITIES
+                        .filter(c => c.toLowerCase().includes(val.toLowerCase()))
+                        .map(c => ({ display: c, value: c }))
+                        .slice(0, 8);
                 }
-                const matches = GLOBAL_CITIES.filter(c => c.toLowerCase().includes(val)).slice(0, 8); 
+
                 if (matches.length > 0) {
                     suggestionsBox.classList.remove('hidden');
-                    matches.forEach(city => {
+                    matches.forEach(item => {
                         const div = document.createElement('div');
                         div.className = 'autocomplete-item';
                         const regex = new RegExp(`(${val})`, 'gi');
-                        div.innerHTML = city.replace(regex, '<strong>$1</strong>');
+                        div.innerHTML = item.display.replace(regex, '<strong>$1</strong>');
                         div.onclick = () => {
-                            input.value = city;
+                            input.value = item.value;
                             suggestionsBox.classList.add('hidden');
                         };
                         suggestionsBox.appendChild(div);
                     });
                 } else {
+                    // No match — still let them type freely
                     suggestionsBox.classList.add('hidden');
                 }
             });
@@ -1172,17 +1219,37 @@
             }
         }
 
-        // Fetch high-quality city image from Wikipedia (free, no API key)
+        // City → beautiful gradient fallback (works everywhere including China)
+        function cityGradient(city) {
+            const gradients = [
+                'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+                'linear-gradient(135deg, #2d1b69 0%, #1a1a2e 50%, #11998e 100%)',
+                'linear-gradient(135deg, #373b44 0%, #4286f4 100%)',
+                'linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)',
+                'linear-gradient(135deg, #1a1a1a 0%, #2d3436 50%, #636e72 100%)',
+            ];
+            let hash = 0;
+            for (let c of city) hash += c.charCodeAt(0);
+            return gradients[hash % gradients.length];
+        }
+
+        // Fetch city image — Wikipedia first, Unsplash fallback, gradient last resort
         async function fetchCityImage(city) {
             const cleanCity = city.split(',')[0].trim();
+            // Try Wikipedia (fast for most regions; may be slow/blocked in China)
             try {
-                const r = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanCity)}`, { signal: AbortSignal.timeout(5000) });
+                const r = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanCity)}`, { signal: AbortSignal.timeout(3000) });
                 const data = await r.json();
                 const src = data.thumbnail?.source;
-                if (src) return src.replace(/\/\d+px-/, '/1200px-');
+                if (src) return { type: 'img', url: src.replace(/\/\d+px-/, '/1200px-') };
             } catch(e) {}
-            // Fallback: Unsplash source (still works, rate-limited but fine for low traffic)
-            return `https://source.unsplash.com/1600x900/?${encodeURIComponent(cleanCity)},travel,city`;
+            // Fallback: Unsplash (accessible in most regions)
+            try {
+                const testUrl = `https://source.unsplash.com/1600x900/?${encodeURIComponent(cleanCity)},travel`;
+                return { type: 'img', url: testUrl };
+            } catch(e) {}
+            // Final fallback: CSS gradient (works everywhere, always)
+            return { type: 'gradient', url: cityGradient(cleanCity) };
         }
 
         function renderItinerary(data) {
@@ -1195,11 +1262,17 @@
 
             // Set placeholder gradient while image loads
             const bgEl = document.getElementById('itinerary-bg');
-            bgEl.style.backgroundImage = 'linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%)';
-            fetchCityImage(data.destination).then(url => {
-                const img = new Image();
-                img.onload = () => { bgEl.style.backgroundImage = `url('${url}')`; };
-                img.src = url;
+            const cleanCity = data.destination.split(',')[0].trim();
+            bgEl.style.backgroundImage = cityGradient(cleanCity);
+            fetchCityImage(data.destination).then(result => {
+                if (result.type === 'gradient') {
+                    bgEl.style.backgroundImage = result.url;
+                } else {
+                    const img = new Image();
+                    img.onload = () => { bgEl.style.backgroundImage = `url('${result.url}')`; };
+                    img.onerror = () => { bgEl.style.backgroundImage = cityGradient(cleanCity); };
+                    img.src = result.url;
+                }
             });
             
             const daysCount = data.days.length;
@@ -1442,22 +1515,41 @@
             }
         }
 
-        // Generate Google Maps multi-waypoint navigation URL (no API key needed)
+        // Generate navigation URL — Google Maps (global) or Baidu Maps (China)
         function openGoogleMapsRoute() {
             if (!currentItineraryData) return;
             const day = currentItineraryData.days[currentDayIndex];
             if (!day) return;
             const valid = day.activities.filter(a => a.lat && a.lng);
-            if (valid.length === 0) { alert('No GPS coordinates available for this day. Try generating a new trip.'); return; }
-            if (valid.length === 1) {
-                window.open(`https://www.google.com/maps/search/?api=1&query=${valid[0].lat},${valid[0].lng}`, '_blank');
+            if (valid.length === 0) {
+                alert(currentLang === 'Chinese' ? '此行程暂无GPS坐标，请重新生成行程' : 'No GPS coordinates. Try regenerating the trip.');
                 return;
             }
-            const origin = `${valid[0].lat},${valid[0].lng}`;
-            const destination = `${valid[valid.length-1].lat},${valid[valid.length-1].lng}`;
-            const waypoints = valid.slice(1, -1).map(a => `${a.lat},${a.lng}`).join('|');
-            const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}${waypoints ? '&waypoints=' + waypoints : ''}&travelmode=walking`;
-            window.open(url, '_blank');
+            if (currentLang === 'Chinese') {
+                // Baidu Maps — works in mainland China
+                // Baidu uses BD-09 coordinate system, but WGS84 input is supported with coord_type param
+                if (valid.length === 1) {
+                    const url = `https://map.baidu.com/search/${encodeURIComponent(valid[0].title || currentItineraryData.destination)}/@${valid[0].lng},${valid[0].lat},15z`;
+                    window.open(url, '_blank');
+                } else {
+                    // Baidu multi-stop route
+                    const origin = `${valid[0].lat},${valid[0].lng}`;
+                    const dest = `${valid[valid.length-1].lat},${valid[valid.length-1].lng}`;
+                    const url = `https://api.map.baidu.com/direction?origin=latlng:${origin}|name:${encodeURIComponent(valid[0].title||'起点')}&destination=latlng:${dest}|name:${encodeURIComponent(valid[valid.length-1].title||'终点')}&mode=walking&coord_type=wgs84&output=html&src=wander`;
+                    window.open(url, '_blank');
+                }
+            } else {
+                // Google Maps — global
+                if (valid.length === 1) {
+                    window.open(`https://www.google.com/maps/search/?api=1&query=${valid[0].lat},${valid[0].lng}`, '_blank');
+                    return;
+                }
+                const origin = `${valid[0].lat},${valid[0].lng}`;
+                const destination = `${valid[valid.length-1].lat},${valid[valid.length-1].lng}`;
+                const waypoints = valid.slice(1, -1).map(a => `${a.lat},${a.lng}`).join('|');
+                const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}${waypoints ? '&waypoints=' + waypoints : ''}&travelmode=walking`;
+                window.open(url, '_blank');
+            }
         }
 
         async function renderMapForDay(dayIndex) {
