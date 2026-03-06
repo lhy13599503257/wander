@@ -244,6 +244,8 @@
 
         /* Activity Check States */
         .check-btn { transition: all 0.2s ease; }
+        .group-size-btn.selected { border-color: #ff5e00; color: #ff5e00; }
+        .group-size-btn { transition: all 0.2s ease; }
         .check-btn.checked { background: #ff5e00 !important; border-color: #ff5e00 !important; color: white !important; }
         .activity-done { opacity: 0.55; }
         .activity-done h3 { text-decoration: line-through; }
@@ -412,14 +414,33 @@
                     <div class="group"><label class="text-neutral-600 text-xs uppercase tracking-widest mb-2 block">Start Date</label><input type="text" placeholder="Select Date" class="minimal-input text-xl" onfocus="(this.type='date')" onblur="(this.type='text'); fetchTripWeather();" id="trip-date" style="font-size: 1.25rem;"></div>
                     <div class="group"><label class="text-neutral-600 text-xs uppercase tracking-widest mb-2 block">Duration (Days)</label><div class="flex items-center border-b border-neutral-800 py-2"><input type="number" value="7" min="1" max="30" class="bg-transparent text-white text-2xl w-full outline-none font-serif italic" id="trip-days"><span class="text-neutral-600 text-sm">DAYS</span></div></div>
                 </div>
+                <!-- Group Size -->
+                <div class="group">
+                    <label class="text-neutral-600 text-xs uppercase tracking-widest mb-3 block" id="group-label">Travelers</label>
+                    <div class="flex space-x-3" id="group-size-btns">
+                        <button onclick="setGroupSize(1)" data-size="1" class="group-size-btn flex-1 py-3 border border-neutral-800 text-white text-sm uppercase tracking-widest transition-colors hover:border-orange-500 selected">
+                            <div class="text-xl mb-0.5">🧍</div><div class="text-[10px]" data-label-solo>Solo</div>
+                        </button>
+                        <button onclick="setGroupSize(2)" data-size="2" class="group-size-btn flex-1 py-3 border border-neutral-800 text-white text-sm uppercase tracking-widest transition-colors hover:border-orange-500">
+                            <div class="text-xl mb-0.5">👫</div><div class="text-[10px]" data-label-duo>Couple</div>
+                        </button>
+                        <button onclick="setGroupSize(4)" data-size="4" class="group-size-btn flex-1 py-3 border border-neutral-800 text-white text-sm uppercase tracking-widest transition-colors hover:border-orange-500">
+                            <div class="text-xl mb-0.5">👨‍👩‍👧‍👦</div><div class="text-[10px]" data-label-group>Group 3-4</div>
+                        </button>
+                        <button onclick="setGroupSize(8)" data-size="8" class="group-size-btn flex-1 py-3 border border-neutral-800 text-white text-sm uppercase tracking-widest transition-colors hover:border-orange-500">
+                            <div class="text-xl mb-0.5">🎉</div><div class="text-[10px]" data-label-big>5+ People</div>
+                        </button>
+                    </div>
+                </div>
                 <!-- Budget + Currency -->
                 <div class="grid grid-cols-2 gap-8">
                     <div class="group">
-                        <label class="text-neutral-600 text-xs uppercase tracking-widest mb-2 block">Trip Budget</label>
+                        <label class="text-neutral-600 text-xs uppercase tracking-widest mb-2 block" id="budget-per-person-label">Budget Per Person</label>
                         <div class="flex items-center border-b border-neutral-800 py-2">
                             <span class="text-neutral-500 text-2xl mr-1" id="currency-symbol">$</span>
-                            <input type="number" placeholder="5000" class="bg-transparent text-white text-2xl w-full outline-none font-serif italic" id="trip-budget">
+                            <input type="number" placeholder="2000" class="bg-transparent text-white text-2xl w-full outline-none font-serif italic" id="trip-budget" oninput="updateTotalBudgetHint()">
                         </div>
+                        <div class="text-[10px] text-neutral-600 mt-1" id="total-budget-hint"></div>
                     </div>
                     <div class="group">
                         <label class="text-neutral-600 text-xs uppercase tracking-widest mb-2 block">Currency</label>
@@ -627,7 +648,7 @@
     <div id="budget-bar" class="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur border-t border-neutral-800 px-6 py-3 hidden" style="z-index:44;">
         <div class="max-w-md mx-auto">
             <div class="flex justify-between items-center mb-2">
-                <span class="text-[10px] text-neutral-600 uppercase tracking-widest">Live Budget</span>
+                <span class="text-[10px] text-neutral-600 uppercase tracking-widest" id="budget-bar-label">Live Budget</span>
                 <div class="flex items-center space-x-3">
                     <button onclick="openJournal()" class="text-[10px] text-neutral-500 hover:text-white border border-neutral-800 hover:border-orange-500 px-2 py-0.5 rounded-full transition-colors">📔 Journal</button>
                     <span class="text-[10px] text-neutral-600" id="budget-pct">0% spent</span>
@@ -637,9 +658,9 @@
                 <div id="budget-progress" class="h-0.5 bg-orange-500 rounded-full transition-all duration-500" style="width:0%"></div>
             </div>
             <div class="flex justify-between text-xs">
-                <span class="text-neutral-600">Budget <span id="total-budget-display" class="text-white font-bold">$0</span></span>
-                <span class="text-neutral-600">Spent <span id="spent-display" class="text-orange-500 font-bold">$0</span></span>
-                <span class="text-neutral-600">Left <span id="remaining-display" class="text-green-400 font-bold">$0</span></span>
+                <span class="text-neutral-600" id="budget-label-pp">Per Person <span id="total-budget-display" class="text-white font-bold">$0</span></span>
+                <span class="text-neutral-600" id="spent-label-pp">Spent <span id="spent-display" class="text-orange-500 font-bold">$0</span></span>
+                <span class="text-neutral-600" id="remaining-label-pp">Left <span id="remaining-display" class="text-green-400 font-bold">$0</span></span>
             </div>
         </div>
     </div>
@@ -861,6 +882,7 @@
         // Map & Budget state
         let currentItineraryData = null;
         let currentDayIndex = 0;
+        let groupSize = 1; // Default solo
         let totalBudgetAmount = 0;
         let spentAmount = 0;
         let leafletMap = null;
@@ -1311,6 +1333,7 @@
                     budget: budget,
                     currency: selectedCurrency,
                     language: currentLang,
+                    group_size: groupSize,
                     confirmed_flight: selectedFlight || null
                 }
             };
@@ -1783,6 +1806,35 @@
             const sel = document.getElementById('trip-currency');
             const sym = sel.options[sel.selectedIndex].getAttribute('data-symbol') || '$';
             document.getElementById('currency-symbol').innerText = sym;
+            updateTotalBudgetHint();
+        }
+
+        function setGroupSize(n) {
+            groupSize = n;
+            document.querySelectorAll('.group-size-btn').forEach(b => {
+                b.classList.toggle('selected', parseInt(b.dataset.size) === n);
+            });
+            updateTotalBudgetHint();
+            // Update labels based on language
+            const isCN = currentLang === 'Chinese';
+            document.querySelectorAll('[data-label-solo]').forEach(el => el.innerText = isCN ? '独行' : 'Solo');
+            document.querySelectorAll('[data-label-duo]').forEach(el => el.innerText = isCN ? '2人' : 'Couple');
+            document.querySelectorAll('[data-label-group]').forEach(el => el.innerText = isCN ? '3-4人' : 'Group 3-4');
+            document.querySelectorAll('[data-label-big]').forEach(el => el.innerText = isCN ? '5+人' : '5+ People');
+        }
+
+        function updateTotalBudgetHint() {
+            const perPerson = parseFloat(document.getElementById('trip-budget').value) || 0;
+            const hint = document.getElementById('total-budget-hint');
+            const sym = document.getElementById('currency-symbol').innerText;
+            if (!hint) return;
+            if (groupSize > 1 && perPerson > 0) {
+                const total = perPerson * groupSize;
+                const isCN = currentLang === 'Chinese';
+                hint.innerText = `× ${groupSize}人 = ${sym}${total.toLocaleString()} ${isCN ? '总预算' : 'total'}`;
+            } else {
+                hint.innerText = '';
+            }
         }
 
         function toggleCheck(btn, costStr) {
@@ -1816,14 +1868,33 @@
         }
 
         function updateBudgetBar() {
-            const remaining = Math.max(0, totalBudgetAmount - spentAmount);
-            document.getElementById('spent-display').innerText = '$' + spentAmount.toFixed(0);
-            document.getElementById('remaining-display').innerText = '$' + remaining.toFixed(0);
-            const pct = totalBudgetAmount > 0 ? Math.min(100, (spentAmount / totalBudgetAmount) * 100) : 0;
+            const isCN = currentLang === 'Chinese';
+            const sym = document.getElementById('currency-symbol')?.innerText || '$';
+            // Per-person amounts
+            const perPersonTotal = totalBudgetAmount;
+            const perPersonSpent = groupSize > 1 ? spentAmount / groupSize : spentAmount;
+            const perPersonLeft = Math.max(0, perPersonTotal - perPersonSpent);
+            const pct = perPersonTotal > 0 ? Math.min(100, (perPersonSpent / perPersonTotal) * 100) : 0;
+
+            const ppLabel = groupSize > 1 ? (isCN ? `人均预算` : `Per Person`) : (isCN ? '预算' : 'Budget');
+            document.getElementById('budget-label-pp').innerHTML = `${ppLabel} <span id="total-budget-display" class="text-white font-bold">${sym}${perPersonTotal.toFixed(0)}</span>`;
+            document.getElementById('spent-display').innerText = sym + perPersonSpent.toFixed(0);
+            document.getElementById('remaining-display').innerText = sym + perPersonLeft.toFixed(0);
             document.getElementById('budget-progress').style.width = pct.toFixed(1) + '%';
             const color = pct > 80 ? '#ef4444' : pct > 60 ? '#f97316' : '#ff5e00';
             document.getElementById('budget-progress').style.background = color;
-            document.getElementById('budget-pct').innerText = pct.toFixed(0) + '% spent';
+            const pctLabel = groupSize > 1
+                ? `${pct.toFixed(0)}% ${isCN ? '人均已花' : 'per person spent'}`
+                : `${pct.toFixed(0)}% ${isCN ? '已花' : 'spent'}`;
+            document.getElementById('budget-pct').innerText = pctLabel;
+            if (groupSize > 1) {
+                const totalSpent = spentAmount;
+                document.getElementById('budget-bar-label').innerText = isCN
+                    ? `${groupSize}人 · 总花费 ${sym}${totalSpent.toFixed(0)}`
+                    : `${groupSize} Travelers · Total ${sym}${totalSpent.toFixed(0)}`;
+            } else {
+                document.getElementById('budget-bar-label').innerText = isCN ? '实时预算' : 'Live Budget';
+            }
         }
 
         function toggleFab() {

@@ -135,6 +135,15 @@ def generate_itinerary(profile, request_data):
     user_sports = ', '.join(profile.get('sports', [])) or 'None'
     confirmed_flight = request_data.get('confirmed_flight')
     flight_note = f"\n    - CONFIRMED FLIGHT (user already booked): {confirmed_flight}" if confirmed_flight else ""
+    group_size = int(request_data.get('group_size', 1))
+    group_desc = {
+        1: "Solo traveler — single rooms, flexible pace, solo-friendly activities",
+        2: "Couple (2 people) — double/twin rooms shared (cheaper per person), romantic spots, shared taxis",
+        4: "Small group (3-4 people) — twin rooms or adjoining rooms, private car/minivan > taxi, group discounts on tours",
+        8: "Large group (5+ people) — suite or multi-room options, minibus/charter vehicle, group booking discounts"
+    }.get(group_size, f"{group_size} travelers — adjust hotel/transport accordingly")
+    total_budget = float(budget) * group_size if budget else 0
+    budget_note = f"{budget} {currency} per person × {group_size} = {total_budget:.0f} {currency} total" if group_size > 1 else f"{budget} {currency}"
 
     prompt = f"""
     You are 'Wander', the world's most attentive luxury travel concierge. You plan trips like a helicopter mom who has done 100+ trips to this destination personally. Every recommendation is SPECIFIC, VERIFIED (in your knowledge), and ACTIONABLE.
@@ -150,7 +159,8 @@ def generate_itinerary(profile, request_data):
     TRIP REQUEST:
     - Destination: {dest}{'  ← MULTI-CITY ROUTE: plan each city segment in order, include inter-city transit day(s)' if '→' in dest else ''}
     - Duration: {days_count} Days
-    - Total Budget: {budget} {currency}
+    - Group: {group_desc}
+    - Budget: {budget_note} (all costs shown as PER PERSON)
     - Preferred Currency for costs: {currency}
     - Start Date: {request_data.get('start_date', 'Flexible')}{flight_note}
 
@@ -191,7 +201,14 @@ def generate_itinerary(profile, request_data):
 
     10. COST FORMAT: Use {currency}. Integers only. Dot as decimal separator. No comma-thousands separators. Realistic local prices.
 
-    11. INTER-CITY TRANSIT (for multi-city routes): For each city transition, include a dedicated transit activity:
+    11. GROUP OPTIMIZATION (critical for groups > 1):
+        - Hotel: recommend shared rooms (double/twin/suite) — quote per-person cost after splitting
+        - Transport IN city: for 3+ people, private car/Didi/Grab is often CHEAPER per person than metro — compare both
+        - Tours & activities: note if group discounts apply (e.g., "Private tour: $200 total / $50pp for 4 people")
+        - Meals: family-style dishes for groups → suggest ordering style and estimated per-person food cost
+        - For 2 people: always note romantic/couple angle where relevant
+
+    12. INTER-CITY TRANSIT (for multi-city routes): For each city transition, include a dedicated transit activity:
         - title: "✈ / 🚄 / 🚌 [City A] → [City B]"
         - desc: Exact train/bus/flight name, departure station, arrival station, booking platform
         - cost: Realistic transport cost in {currency}
