@@ -364,6 +364,10 @@
         <div class="flex items-center space-x-4"><div class="h-[1px] w-56 accent-bg"></div><span class="text-xs uppercase tracking-[0.2em] text-neutral-400">Shopping 07/07</span></div>
         <div class="space-y-8">
             <h1 class="serif text-4xl italic leading-tight text-white slide-up">Retail <br> <span class="accent-text">therapy</span>?</h1>
+            <div class="mb-8">
+              <h3 class="text-neutral-500 text-xs uppercase tracking-widest mb-3" id="diet-label">Dietary Preferences</h3>
+              <div class="flex flex-wrap gap-2" id="diet-container"></div>
+            </div>
             <div class="flex flex-wrap gap-3 slide-up-delay-1" id="shopping-container"></div>
             <button onclick="finishProfile()" class="glass-card w-full py-4 mt-8 text-orange-500 border-orange-900/50 hover:bg-orange-900/20 uppercase text-xs tracking-widest font-bold">Finish Profile Setup</button>
         </div>
@@ -553,6 +557,10 @@
                     <div class="flex items-start"><span class="mr-2">🚕</span> <span id="log-transport" class="italic">Transport tips...</span></div>
                     <div class="mt-2 pt-2 border-t border-neutral-800 flex items-start"><span class="mr-2">💰</span> <span id="log-budget" class="text-white font-bold">Budget breakdown...</span></div>
                 </div>
+                <div id="kbyg-section" class="hidden mt-3 pt-3 border-t border-neutral-800">
+                  <div class="text-xs text-orange-500 uppercase tracking-widest mb-2">Before You Go</div>
+                  <div id="kbyg-content" class="space-y-1.5 text-xs text-neutral-400"></div>
+                </div>
             </div>
         </div>
 
@@ -584,6 +592,10 @@
                 <button onclick="fabAction('share')" class="flex items-center space-x-3 group">
                     <span class="text-white text-xs bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Share Trip</span>
                     <div class="w-10 h-10 rounded-full bg-neutral-800 border border-neutral-700 text-white flex items-center justify-center shadow-lg hover:bg-blue-500 transition-colors">↗</div>
+                </button>
+                <button onclick="fabAction('pack')" class="flex items-center space-x-3 group">
+                    <span class="text-white text-xs bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap" id="fab-pack-label">Packing List</span>
+                    <div class="w-10 h-10 rounded-full bg-neutral-800 border border-neutral-700 text-white flex items-center justify-center shadow-lg hover:bg-green-600 transition-colors">🧳</div>
                 </button>
                 <button onclick="fabAction('ask')" class="flex items-center space-x-3 group">
                     <span class="text-white text-xs bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Ask AI</span>
@@ -620,6 +632,23 @@
             </div>
             <div id="journal-entries" class="space-y-3"></div>
         </div>
+    </div>
+
+    <!-- PACKING LIST MODAL -->
+    <div id="packing-modal" class="fixed inset-0 bg-black/90 backdrop-blur hidden z-[62] overflow-y-auto">
+      <div class="min-h-full flex items-start justify-center p-4 pt-16">
+        <div class="bg-[#0a0a0a] border border-neutral-800 rounded-2xl p-8 w-full max-w-md space-y-4">
+          <div class="flex justify-between items-center mb-2">
+            <h2 class="font-serif italic text-2xl text-white" id="packing-title">Packing List</h2>
+            <button onclick="document.getElementById('packing-modal').classList.add('hidden')" class="text-neutral-600 hover:text-white text-lg">✕</button>
+          </div>
+          <p class="text-neutral-600 text-xs uppercase tracking-widest" id="packing-dest">Loading...</p>
+          <div id="packing-content" class="space-y-4">
+            <div class="text-neutral-500 text-sm text-center py-8">Generating your packing list...</div>
+          </div>
+          <button onclick="window.print()" class="w-full py-3 border border-neutral-800 hover:border-white text-neutral-500 hover:text-white text-xs uppercase tracking-widest transition-colors mt-4">🖨 Print List</button>
+        </div>
+      </div>
     </div>
 
     <!-- PRINT STYLES -->
@@ -860,6 +889,7 @@
             // Re-render sports & shopping buttons in new language
             populateSports();
             populateShopping();
+            populateDiet();
         }
 
         // === DATASETS ===
@@ -911,6 +941,11 @@
                 "玩具/手办", "传统工艺品", "纪念品", "美食特产", "酒类",
                 "百货商场", "奥特莱斯", "跳蚤市场"
             ]
+        };
+
+        const DIET_LIST = {
+            English: ['No Restrictions', 'Vegetarian', 'Vegan', 'Halal', 'Kosher', 'Gluten-Free', 'Dairy-Free', 'Nut Allergy', 'Seafood Allergy', 'No Pork', 'No Beef', 'Raw Fish OK'],
+            Chinese: ['无限制', '素食', '纯素', '清真', '犹太洁食', '无麸质', '无乳糖', '坚果过敏', '海鲜过敏', '不吃猪肉', '不吃牛肉', '接受生鱼片']
         };
 
         let isEditingMode = false;
@@ -982,6 +1017,7 @@
         }
 
         function populateShopping() {
+            populateDiet();
             const container = document.getElementById('shopping-container');
             if (!container) return;
             const list = SHOPPING_LIST[currentLang] || SHOPPING_LIST.English;
@@ -991,6 +1027,29 @@
                 btn.className = "tag-btn";
                 btn.innerText = item;
                 btn.onclick = () => toggleTag(btn);
+                container.appendChild(btn);
+            });
+        }
+
+        function populateDiet() {
+            const container = document.getElementById('diet-container');
+            if (!container) return;
+            const list = DIET_LIST[currentLang] || DIET_LIST.English;
+            container.innerHTML = '';
+            list.forEach(item => {
+                const btn = document.createElement('button');
+                btn.className = 'tag-btn text-xs py-1 px-3';
+                btn.innerText = item;
+                btn.onclick = () => {
+                    if (item === 'No Restrictions' || item === '无限制') {
+                        container.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('selected'));
+                        btn.classList.add('selected');
+                    } else {
+                        const noRestBtn = [...container.querySelectorAll('.tag-btn')].find(b => b.innerText === 'No Restrictions' || b.innerText === '无限制');
+                        if (noRestBtn) noRestBtn.classList.remove('selected');
+                        btn.classList.toggle('selected');
+                    }
+                };
                 container.appendChild(btn);
             });
         }
@@ -1188,6 +1247,7 @@
         }
 
         function finishProfile() {
+            currentData.diet = [...document.querySelectorAll('#diet-container .tag-btn.selected')].map(b => b.innerText).filter(Boolean);
             lsSaveProfile(currentData);
             if(isEditingMode) { saveAndReturn(); }
             else { updateView(8); setTimeout(() => { updateView(9); }, 2000); }
@@ -1496,6 +1556,26 @@
                 }
                 if(data.logistics && data.logistics.transport_tip) document.getElementById('log-transport').innerText = data.logistics.transport_tip;
                 if(data.budget_summary) document.getElementById('log-budget').innerText = `Flight: ${data.budget_summary.flight} | Stay: ${data.budget_summary.stay} | Total: ${data.budget_summary.total}`;
+                if (data.know_before_you_go) {
+                    const k = data.know_before_you_go;
+                    const kSection = document.getElementById('kbyg-section');
+                    const kContent = document.getElementById('kbyg-content');
+                    if (kSection && kContent) {
+                        kSection.classList.remove('hidden');
+                        let kHtml = '';
+                        if (k.visa) kHtml += `<div>🛂 <span class="text-neutral-300">${k.visa}</span></div>`;
+                        if (k.tipping) kHtml += `<div>💰 <span class="text-neutral-300">${k.tipping}</span></div>`;
+                        if (k.currency_tip) kHtml += `<div>💳 <span class="text-neutral-300">${k.currency_tip}</span></div>`;
+                        if (k.emergency) kHtml += `<div>🚨 <span class="text-neutral-300">${k.emergency}</span></div>`;
+                        if (k.customs) kHtml += `<div>🎌 <span class="text-neutral-300">${k.customs}</span></div>`;
+                        if (k.local_phrases && k.local_phrases.length) {
+                            kHtml += `<div class="mt-2"><div class="text-neutral-500 uppercase tracking-widest text-[10px] mb-1">Local Phrases</div>`;
+                            k.local_phrases.forEach(p => { kHtml += `<div class="text-neutral-400 italic text-[11px]">• ${p}</div>`; });
+                            kHtml += '</div>';
+                        }
+                        kContent.innerHTML = kHtml;
+                    }
+                }
             } else {
                 logCard.classList.add('hidden');
             }
@@ -1504,8 +1584,11 @@
             tabsContainer.innerHTML = ''; 
             data.days.forEach((day, index) => {
                 const btn = document.createElement('button');
-                btn.className = `text-sm whitespace-nowrap transition-colors ${index === 0 ? 'text-orange-500 font-bold' : 'text-neutral-500 hover:text-white'}`;
-                btn.innerText = day.day;
+                btn.className = `text-sm whitespace-nowrap transition-colors text-center ${index === 0 ? 'text-orange-500 font-bold' : 'text-neutral-500 hover:text-white'}`;
+                const dayTotal = (day.activities || []).reduce((sum, a) => sum + parseCostNum(a.cost || '0'), 0);
+                const currSym = document.getElementById('currency-symbol')?.innerText || '$';
+                const costLabel = dayTotal > 0 ? `<span class="text-[9px] text-neutral-600 block">${currSym}${dayTotal.toFixed(0)}</span>` : '';
+                btn.innerHTML = `${day.day}${costLabel}`;
                 btn.onclick = () => switchDay(index, data.days);
                 tabsContainer.appendChild(btn);
             });
@@ -1582,6 +1665,19 @@
                     </div>`;
                 }
 
+                // Booking links for bookable activities (GetYourGuide / Viator)
+                const isBookable = /museum|tour|temple|shrine|show|ticket|entry|pass|cruise|safari|diving|snorkel|concert|experience|gallery|theme park|zoo|aquarium|cable car|scenic|attraction|博物馆|景点|门票|游览|演出|参观/i.test(act.title + ' ' + (act.tag || ''));
+                let bookingHtml = '';
+                if (isBookable && act.address) {
+                    const searchQ = encodeURIComponent((act.title || '') + ' ' + (currentItineraryData?.destination?.split('→')[0] || ''));
+                    const gygUrl = `https://www.getyourguide.com/s/?q=${searchQ}`;
+                    const viatorUrl = `https://www.viator.com/search?text=${searchQ}`;
+                    bookingHtml = `<div class="mt-2 flex gap-2 flex-wrap">
+                        <a href="${gygUrl}" target="_blank" onclick="event.stopPropagation()" class="text-[10px] text-white bg-orange-600/70 hover:bg-orange-500 px-2 py-1 rounded transition-colors">🎟 GetYourGuide</a>
+                        <a href="${viatorUrl}" target="_blank" onclick="event.stopPropagation()" class="text-[10px] text-white bg-purple-700/70 hover:bg-purple-600 px-2 py-1 rounded transition-colors">🗺 Viator</a>
+                    </div>`;
+                }
+
                 div.innerHTML = `
                     <div class="timeline-dot"></div>
                     <span class="absolute left-[-10px] top-[-20px] text-[10px] text-neutral-500 font-mono">${act.time}</span>
@@ -1600,6 +1696,7 @@
                         ${photoHtml}
                         ${proTipHtml}
                         ${hotelBookingHtml}
+                        ${bookingHtml}
                     </div>
                 `;
                 container.appendChild(div);
@@ -1964,6 +2061,7 @@
                     div.innerHTML = `<div class="timeline-dot"></div><span class="absolute left-[-10px] top-[-20px] text-[10px] text-neutral-500 font-mono">${time}</span><div class="glass-card p-4 border border-orange-500/30"><h3 class="font-serif text-xl italic text-white mb-1">${title}</h3><p class="text-xs text-neutral-400">${desc}</p></div>`;
                     container.appendChild(div);
                 } else if (action === 'share') { openShareModal(); }
+                else if (action === 'pack') { openPackingList(); }
                 else if (action === 'ask') { openAIChat(); }
             }, 200);
         }
@@ -2305,6 +2403,51 @@
           if (!confirmed) return;
           closeItinerary();
           setTimeout(() => startPlanning(), 100);
+        }
+
+        // === PACKING LIST ===
+        async function openPackingList() {
+            if (!currentItineraryData) return;
+            const isCN = currentLang === 'Chinese';
+            const modal = document.getElementById('packing-modal');
+            modal.classList.remove('hidden');
+            document.getElementById('packing-title').innerText = isCN ? '行李清单' : 'Packing List';
+            document.getElementById('packing-dest').innerText = currentItineraryData.destination;
+            document.getElementById('packing-content').innerHTML = `<div class="text-neutral-500 text-sm text-center py-8">${isCN ? 'AI 正在生成...' : 'AI is generating...'}</div>`;
+
+            try {
+                const res = await fetch('/api/packing-list', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({
+                        destination: currentItineraryData.destination,
+                        duration: currentItineraryData.summary?.duration || 7,
+                        weather_hint: '',
+                        profile: currentData,
+                        language: currentLang
+                    })
+                });
+                const data = await res.json();
+                const sections = {
+                    essentials: isCN ? '🎒 必备物品' : '🎒 Essentials',
+                    clothing: isCN ? '👕 衣物' : '👕 Clothing',
+                    toiletries: isCN ? '🪥 洗漱用品' : '🪥 Toiletries',
+                    tech: isCN ? '💻 数码设备' : '💻 Tech & Gadgets',
+                    destination_specific: isCN ? '📍 目的地专项' : '📍 Destination Specific',
+                    dont_forget: isCN ? '⚠️ 别忘了' : '⚠️ Don\'t Forget'
+                };
+                let html = '';
+                for (const [key, label] of Object.entries(sections)) {
+                    const items = data[key] || [];
+                    if (!items.length) continue;
+                    html += `<div><div class="text-xs uppercase tracking-widest text-orange-500 mb-2">${label}</div><ul class="space-y-1.5">`;
+                    items.forEach(item => { html += `<li class="flex items-start space-x-2 text-sm text-neutral-300"><span class="text-neutral-600 mt-0.5 flex-shrink-0">□</span><span>${item}</span></li>`; });
+                    html += `</ul></div>`;
+                }
+                document.getElementById('packing-content').innerHTML = html || `<p class="text-neutral-500 text-sm">${isCN ? '生成失败，请重试' : 'Failed to generate. Please try again.'}</p>`;
+            } catch(e) {
+                document.getElementById('packing-content').innerHTML = `<p class="text-neutral-500 text-sm">Error: ${e.message}</p>`;
+            }
         }
 
         // === PWA: Service Worker Registration ===

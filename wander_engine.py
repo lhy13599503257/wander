@@ -153,6 +153,7 @@ def generate_itinerary(profile, request_data):
     - Travel Vibe: {user_style} (chill=relaxed pace, rush=pack in as much as possible)
     - Shopping Interests: {user_tags}
     - Active Interests: {user_sports}
+    - Dietary Restrictions: {', '.join(profile.get('diet', [])) or 'None'}
     - Transport Preference: {transport_pref}
     - Budget Level: {budget_level}
 
@@ -241,6 +242,15 @@ def generate_itinerary(profile, request_data):
             "why": "Boutique feel, central Marais location, roof terrace for sunset drinks.",
             "check_in_tip": "Request a room above floor 3 for quieter sleep."
         }},
+        "know_before_you_go": {{
+            "visa": "Citizens of most countries get 90-day visa-free entry. Check your specific passport.",
+            "currency_tip": "Cash is king in Tokyo. Get JPY from 7-Eleven ATMs (best rates). Credit cards accepted at hotels/chains.",
+            "tipping": "No tipping culture. Tipping can be considered rude. Price = what you pay.",
+            "local_phrases": ["Arigatou gozaimasu — Thank you", "Sumimasen — Excuse me / Sorry", "Ikura desu ka — How much is this?", "Eigo ga hanasemasu ka — Do you speak English?"],
+            "emergency": "Police: 110 | Ambulance/Fire: 119 | Tourist Helpline: 03-5321-3077",
+            "customs": "Remove shoes when entering homes/some restaurants. Bow as greeting. Queue politely.",
+            "safety": "Extremely safe. Pickpocketing rare. Tap water safe to drink."
+        }},
         "budget_summary": {{
             "flight": "1245",
             "stay": "1960",
@@ -290,6 +300,33 @@ def generate_itinerary(profile, request_data):
     
     # Fallback to Mock if API fails
     return mock_generator(dest, int(days_count), profile)
+
+def generate_packing_list(destination, duration, weather_hint, profile, language='English'):
+    prompt = f"""You are a seasoned travel packer. Generate a concise, smart packing list for:
+- Destination: {destination}
+- Duration: {duration} days
+- Weather/Season: {weather_hint or 'unknown'}
+- Traveler style: {profile.get('style','chill')}
+- Sports/Activities: {', '.join(profile.get('sports',[])) or 'none'}
+- Language: {language}
+
+Return ONLY valid JSON:
+{{
+  "essentials": ["item1", "item2"],
+  "clothing": ["item1", "item2"],
+  "toiletries": ["item1", "item2"],
+  "tech": ["item1", "item2"],
+  "destination_specific": ["item1 — reason", "item2 — reason"],
+  "dont_forget": ["item1", "item2"]
+}}
+Each array max 6 items. Be specific (e.g. "JR Pass (buy before departure)" not just "train pass"). Output language: {language}."""
+    result = call_gemini(prompt)
+    if result:
+        try:
+            return json.loads(result.replace('```json','').replace('```','').strip())
+        except: pass
+    return {"essentials":[],"clothing":[],"toiletries":[],"tech":[],"destination_specific":[],"dont_forget":[]}
+
 
 def adjust_itinerary(itinerary, user_request, language='English'):
     """Surgically modify an existing itinerary based on user's natural language request."""

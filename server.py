@@ -179,6 +179,21 @@ def api_plan():
     print(f"✅ Trip generated (id={result['id']})")
     return jsonify(result)
 
+# POST: Generate packing list
+@app.route('/api/packing-list', methods=['POST'])
+def api_packing_list():
+    if not wander_engine:
+        return jsonify({"error": "AI unavailable"}), 503
+    data = request.get_json()
+    result = wander_engine.generate_packing_list(
+        data.get('destination',''),
+        data.get('duration', 7),
+        data.get('weather_hint',''),
+        data.get('profile', {}),
+        data.get('language', 'English')
+    )
+    return jsonify(result)
+
 # POST: AI adjust itinerary
 @app.route('/api/adjust', methods=['POST'])
 def api_adjust():
