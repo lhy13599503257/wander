@@ -132,6 +132,8 @@ def generate_itinerary(profile, request_data):
     budget_level = profile.get('budget', 'standard')
     user_style = profile.get('style', 'chill')
     user_tags = ', '.join(profile.get('tags', [])) or 'General sightseeing'
+    shopping_freq = profile.get('shopping_freq', 'medium')
+    shopping_freq_desc = {'light': 'occasionally (1-2 times total across the trip, not every day)', 'medium': 'every other day (alternate days only)', 'heavy': 'daily (shopping is a main focus)'}.get(shopping_freq, 'every other day')
     user_sports = ', '.join(profile.get('sports', [])) or 'None'
     confirmed_flight = request_data.get('confirmed_flight')
     visited_places = request_data.get('visited_places', [])
@@ -154,6 +156,7 @@ def generate_itinerary(profile, request_data):
     - Origin: {profile.get('location', 'Toronto, Canada')}
     - Travel Vibe: {user_style} (chill=relaxed pace, rush=pack in as much as possible)
     - Shopping Interests: {user_tags}
+    - Shopping Frequency: include shopping {shopping_freq_desc}
     - Active Interests: {user_sports}
     - Dietary Restrictions: {', '.join(profile.get('diet', [])) or 'None'}
     - Transport Preference: {transport_pref}

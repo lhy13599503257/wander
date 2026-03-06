@@ -438,6 +438,15 @@
               <div class="flex flex-wrap gap-2" id="diet-container"></div>
             </div>
             <div class="flex flex-wrap gap-3 slide-up-delay-1" id="shopping-container"></div>
+            <!-- Shopping frequency -->
+            <div class="mt-4 space-y-2" id="shopping-freq-wrap">
+                <p class="text-neutral-600 text-xs uppercase tracking-widest" id="shopping-freq-label">How often to include shopping?</p>
+                <div class="flex gap-2 flex-wrap" id="shopping-freq-btns">
+                    <button onclick="selectShopFreq(this,'light')" class="shop-freq-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-val="light" id="sf-light">偶尔逛逛</button>
+                    <button onclick="selectShopFreq(this,'medium')" class="shop-freq-btn text-xs px-3 py-1.5 border border-orange-500 text-orange-500 rounded-full" data-val="medium" id="sf-medium">隔天安排</button>
+                    <button onclick="selectShopFreq(this,'heavy')" class="shop-freq-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-val="heavy" id="sf-heavy">购物为主</button>
+                </div>
+            </div>
             <button onclick="finishProfile()" class="glass-card w-full py-4 mt-8 text-orange-500 border-orange-900/50 hover:bg-orange-900/20 uppercase text-xs tracking-widest font-bold">Finish Profile Setup</button>
             <button onclick="finishProfile()" class="w-full py-2 text-neutral-700 hover:text-neutral-500 text-xs uppercase tracking-widest transition-colors">Skip & Finish →</button>
         </div>
@@ -961,6 +970,10 @@
             safe(() => document.querySelector('#view-flight h1').innerHTML = t.flight_q);
             safe(() => document.querySelector('#view-sports h1').innerHTML = t.sports_q);
             safe(() => document.querySelector('#view-shopping h1').innerHTML = t.shop_q);
+            safe(() => { const el = document.getElementById('shopping-freq-label'); if(el) el.innerText = isCN ? '购物安排频率？' : 'How often to include shopping?'; });
+            safe(() => { const l=document.getElementById('sf-light'); if(l) l.innerText = isCN?'偶尔逛逛':'Occasionally'; });
+            safe(() => { const m=document.getElementById('sf-medium'); if(m) m.innerText = isCN?'隔天安排':'Every other day'; });
+            safe(() => { const h=document.getElementById('sf-heavy'); if(h) h.innerText = isCN?'购物为主':'Shopping focus'; });
 
             // Style choices
             safe(() => {
@@ -1227,6 +1240,11 @@
             // Restore passport/visa fields if profile exists
             if (profile) {
                 if (profile.name) document.getElementById('user-name-input').value = profile.name;
+                if (profile.shopping_freq) {
+                    shopFreq = profile.shopping_freq;
+                    const btn = document.getElementById('sf-' + profile.shopping_freq);
+                    if (btn) selectShopFreq(btn, profile.shopping_freq);
+                }
                 if (profile.passport) document.getElementById('passport-input').value = profile.passport;
                 if (profile.visas && profile.visas.length) {
                     visaEntries = profile.visas.map((v, i) => ({...v, id: Date.now() + i}));
@@ -1536,8 +1554,21 @@
             if(isEditingMode) { saveAndReturn(); } else { updateView(stepIndex + 1); }
         }
 
+        let shopFreq = 'medium'; // default
+
+        function selectShopFreq(btn, val) {
+            shopFreq = val;
+            document.querySelectorAll('.shop-freq-btn').forEach(b => {
+                b.classList.remove('border-orange-500','text-orange-500');
+                b.classList.add('border-neutral-800','text-neutral-500');
+            });
+            btn.classList.add('border-orange-500','text-orange-500');
+            btn.classList.remove('border-neutral-800','text-neutral-500');
+        }
+
         function finishProfile() {
             currentData.diet = [...document.querySelectorAll('#diet-container .tag-btn.selected')].map(b => b.innerText).filter(Boolean);
+            currentData.shopping_freq = shopFreq;
             lsSaveProfile(currentData);
             if(isEditingMode) { saveAndReturn(); }
             else { updateView(8); setTimeout(() => { updateView(9); }, 2000); }
