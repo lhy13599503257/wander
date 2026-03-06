@@ -1315,32 +1315,44 @@
                 }
             };
 
-            try {
-                const response = await fetch('/api/plan', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                
-                const data = await response.json();
-                
-                if(data.error) {
-                    alert("AI Brain Error: " + data.error);
+            const attemptGenerate = async (attempt) => {
+                const ctrl = new AbortController();
+                const timer = setTimeout(() => ctrl.abort(), 58000); // 58s client timeout
+                try {
+                    const response = await fetch('/api/plan', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                        signal: ctrl.signal
+                    });
+                    clearTimeout(timer);
+                    const data = await response.json();
+                    if (data.error) {
+                        alert("AI Error: " + data.error);
+                        updateView(9);
+                        return;
+                    }
+                    renderItinerary(data);
+                    savedTrips.unshift(data);
+                    lsSaveTrips(savedTrips);
+                    renderSavedTrips(savedTrips);
+                    setTimeout(() => { updateView(10); }, 1000);
+                } catch (err) {
+                    clearTimeout(timer);
+                    console.warn(`Attempt ${attempt} failed:`, err.message);
+                    if (attempt < 2) {
+                        // Auto retry once
+                        const retryMsg = currentLang === 'Chinese' ? '网络有点慢，正在重试...' : 'Slow connection, retrying...';
+                        document.querySelector('#view-loading h1').innerText = retryMsg;
+                        await new Promise(r => setTimeout(r, 2000));
+                        document.querySelector('#view-loading h1').innerText = currentLang === 'Chinese' ? 'AI 思考中...' : 'Wander AI is thinking...';
+                        return attemptGenerate(attempt + 1);
+                    }
+                    alert(currentLang === 'Chinese' ? "生成失败，请检查网络后重试 🙏" : "Generation failed, please check your connection 🙏");
                     updateView(9);
-                    return;
                 }
-
-                renderItinerary(data);
-                savedTrips.unshift(data);
-                lsSaveTrips(savedTrips);
-                renderSavedTrips(savedTrips);
-                setTimeout(() => { updateView(10); }, 1000);
-
-            } catch (err) {
-                console.error(err);
-                alert(currentLang === 'Chinese' ? "生成失败，请稍后再试 🙏" : "Generation failed, please try again 🙏");
-                updateView(9);
-            }
+            };
+            await attemptGenerate(1);
         }
 
         // City → beautiful gradient fallback (works everywhere including China)

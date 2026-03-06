@@ -33,19 +33,89 @@ def call_gemini(prompt):
         return None
 
 def normalize_city(city):
-    """Normalize Nominatim output like '厦门市, 中国' → 'Xiamen, China' via simple map,
-    or at least strip trailing 市/省/州 for cleaner AI prompts."""
-    CN_MAP = {
+    """Normalize Nominatim output like '厦门市, 中国' → 'Xiamen, China'."""
+    # Chinese city names → English
+    CITY_MAP = {
+        '北京': 'Beijing', '上海': 'Shanghai', '广州': 'Guangzhou', '深圳': 'Shenzhen',
+        '成都': 'Chengdu', '重庆': 'Chongqing', '武汉': 'Wuhan', '西安': 'Xian',
+        '杭州': 'Hangzhou', '南京': 'Nanjing', '苏州': 'Suzhou', '天津': 'Tianjin',
+        '厦门': 'Xiamen', '青岛': 'Qingdao', '大连': 'Dalian', '哈尔滨': 'Harbin',
+        '长沙': 'Changsha', '昆明': 'Kunming', '三亚': 'Sanya', '丽江': 'Lijiang',
+        '香港': 'Hong Kong', '澳门': 'Macau', '台北': 'Taipei',
+        '东京': 'Tokyo', '大阪': 'Osaka', '京都': 'Kyoto', '札幌': 'Sapporo',
+        '名古屋': 'Nagoya', '福冈': 'Fukuoka', '神户': 'Kobe', '奈良': 'Nara',
+        '首尔': 'Seoul', '釜山': 'Busan', '济州': 'Jeju',
+        '悉尼': 'Sydney', '墨尔本': 'Melbourne', '布里斯班': 'Brisbane',
+        '奥克兰': 'Auckland', '惠灵顿': 'Wellington', '皇后镇': 'Queenstown',
+        '巴黎': 'Paris', '里昂': 'Lyon', '尼斯': 'Nice', '马赛': 'Marseille',
+        '伦敦': 'London', '曼彻斯特': 'Manchester', '爱丁堡': 'Edinburgh',
+        '罗马': 'Rome', '米兰': 'Milan', '威尼斯': 'Venice', '佛罗伦萨': 'Florence',
+        '那不勒斯': 'Naples', '都灵': 'Turin',
+        '巴塞罗那': 'Barcelona', '马德里': 'Madrid', '塞维利亚': 'Seville',
+        '里斯本': 'Lisbon', '波尔图': 'Porto',
+        '阿姆斯特丹': 'Amsterdam', '鹿特丹': 'Rotterdam',
+        '柏林': 'Berlin', '慕尼黑': 'Munich', '汉堡': 'Hamburg', '法兰克福': 'Frankfurt',
+        '苏黎世': 'Zurich', '日内瓦': 'Geneva', '伯尔尼': 'Bern',
+        '维也纳': 'Vienna', '萨尔茨堡': 'Salzburg',
+        '布鲁塞尔': 'Brussels', '布鲁日': 'Bruges',
+        '布拉格': 'Prague', '布达佩斯': 'Budapest', '华沙': 'Warsaw', '克拉科夫': 'Krakow',
+        '雅典': 'Athens', '圣托里尼': 'Santorini', '米科诺斯': 'Mykonos',
+        '伊斯坦布尔': 'Istanbul', '安卡拉': 'Ankara',
+        '迪拜': 'Dubai', '阿布扎比': 'Abu Dhabi', '多哈': 'Doha',
+        '新加坡': 'Singapore', '吉隆坡': 'Kuala Lumpur',
+        '曼谷': 'Bangkok', '普吉': 'Phuket', '清迈': 'Chiang Mai', '芭提雅': 'Pattaya',
+        '河内': 'Hanoi', '胡志明市': 'Ho Chi Minh City', '岘港': 'Da Nang',
+        '巴厘岛': 'Bali', '雅加达': 'Jakarta', '日惹': 'Yogyakarta',
+        '马尼拉': 'Manila', '宿务': 'Cebu', '长滩岛': 'Boracay',
+        '孟买': 'Mumbai', '新德里': 'Delhi', '班加罗尔': 'Bangalore',
+        '纽约': 'New York', '洛杉矶': 'Los Angeles', '芝加哥': 'Chicago',
+        '旧金山': 'San Francisco', '迈阿密': 'Miami', '拉斯维加斯': 'Las Vegas',
+        '西雅图': 'Seattle', '波士顿': 'Boston', '华盛顿': 'Washington DC',
+        '多伦多': 'Toronto', '温哥华': 'Vancouver', '蒙特利尔': 'Montreal',
+        '墨西哥城': 'Mexico City', '坎昆': 'Cancun',
+        '里约热内卢': 'Rio de Janeiro', '圣保罗': 'Sao Paulo', '布宜诺斯艾利斯': 'Buenos Aires',
+        '开罗': 'Cairo', '马拉喀什': 'Marrakech', '内罗毕': 'Nairobi',
+        '约翰内斯堡': 'Johannesburg', '开普敦': 'Cape Town',
+        '雷克雅未克': 'Reykjavik', '赫尔辛基': 'Helsinki',
+        '哥本哈根': 'Copenhagen', '斯德哥尔摩': 'Stockholm', '奥斯陆': 'Oslo',
+    }
+    # Chinese country/region names → English
+    COUNTRY_MAP = {
         '中国': 'China', '美国': 'USA', '日本': 'Japan', '韩国': 'South Korea',
         '法国': 'France', '英国': 'UK', '德国': 'Germany', '意大利': 'Italy',
         '西班牙': 'Spain', '泰国': 'Thailand', '澳大利亚': 'Australia', '加拿大': 'Canada',
+        '新西兰': 'New Zealand', '新加坡': 'Singapore', '印度': 'India',
+        '越南': 'Vietnam', '印度尼西亚': 'Indonesia', '菲律宾': 'Philippines',
+        '马来西亚': 'Malaysia', '阿联酋': 'UAE', '土耳其': 'Turkey',
+        '希腊': 'Greece', '葡萄牙': 'Portugal', '荷兰': 'Netherlands',
+        '瑞士': 'Switzerland', '奥地利': 'Austria', '比利时': 'Belgium',
+        '捷克': 'Czechia', '匈牙利': 'Hungary', '波兰': 'Poland',
+        '巴西': 'Brazil', '阿根廷': 'Argentina', '墨西哥': 'Mexico',
+        '摩洛哥': 'Morocco', '南非': 'South Africa', '埃及': 'Egypt',
+        '冰岛': 'Iceland', '挪威': 'Norway', '瑞典': 'Sweden', '芬兰': 'Finland',
+        # Australian states & common regions
+        '新南威尔士': 'New South Wales', '维多利亚': 'Victoria',
+        '昆士兰': 'Queensland', '西澳大利亚': 'Western Australia',
+        # Japanese prefectures
+        '东京都': 'Tokyo', '大阪府': 'Osaka', '京都府': 'Kyoto',
+        # US states
+        '加利福尼亚': 'California', '纽约州': 'New York State',
+        '佛罗里达': 'Florida', '德克萨斯': 'Texas',
     }
-    # Replace Chinese country names
-    for zh, en in CN_MAP.items():
+    # Handle multi-city routes (contains →)
+    if '→' in city:
+        parts = city.split('→')
+        return ' → '.join(normalize_city(p.strip()) for p in parts)
+    # Replace Chinese city names first
+    for zh, en in CITY_MAP.items():
         city = city.replace(zh, en)
-    # Strip trailing 市/省/自治区/特别行政区
-    city = city.replace('市', '').replace('省', '').replace('自治区', '').replace('特别行政区', '')
-    # Clean up double commas / spaces
+    # Replace Chinese country names
+    for zh, en in COUNTRY_MAP.items():
+        city = city.replace(zh, en)
+    # Strip Chinese admin suffixes
+    for suffix in ['市', '省', '自治区', '特别行政区', '州', '都', '道', '府', '县']:
+        city = city.replace(suffix, '')
+    # Clean up
     parts = [p.strip() for p in city.split(',') if p.strip()]
     return ', '.join(parts)
 
