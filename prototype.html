@@ -1228,7 +1228,7 @@
 
             } catch (err) {
                 console.error(err);
-                alert("Server Error! Is server.py running?");
+                alert(currentLang === 'Chinese' ? "生成失败，请稍后再试 🙏" : "Generation failed, please try again 🙏");
                 updateView(9);
             }
         }

@@ -19,15 +19,35 @@ def call_gemini(prompt):
     }
     try:
         req = urllib.request.Request(url, data=json.dumps(data).encode('utf-8'), headers=headers)
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=100) as response:
             result = json.loads(response.read().decode('utf-8'))
             return result['candidates'][0]['content']['parts'][0]['text']
+    except urllib.error.HTTPError as e:
+        print(f"❌ Gemini HTTP Error {e.code}: {e.read().decode()[:200]}")
+        return None
     except Exception as e:
-        print(f"❌ Gemini API Error: {e}")
+        print(f"❌ Gemini API Error: {type(e).__name__}: {e}")
         return None
 
+def normalize_city(city):
+    """Normalize Nominatim output like '厦门市, 中国' → 'Xiamen, China' via simple map,
+    or at least strip trailing 市/省/州 for cleaner AI prompts."""
+    CN_MAP = {
+        '中国': 'China', '美国': 'USA', '日本': 'Japan', '韩国': 'South Korea',
+        '法国': 'France', '英国': 'UK', '德国': 'Germany', '意大利': 'Italy',
+        '西班牙': 'Spain', '泰国': 'Thailand', '澳大利亚': 'Australia', '加拿大': 'Canada',
+    }
+    # Replace Chinese country names
+    for zh, en in CN_MAP.items():
+        city = city.replace(zh, en)
+    # Strip trailing 市/省/自治区/特别行政区
+    city = city.replace('市', '').replace('省', '').replace('自治区', '').replace('特别行政区', '')
+    # Clean up double commas / spaces
+    parts = [p.strip() for p in city.split(',') if p.strip()]
+    return ', '.join(parts)
+
 def generate_itinerary(profile, request_data):
-    dest = request_data.get('destination', 'Paris')
+    dest = normalize_city(request_data.get('destination', 'Paris'))
     days_count = request_data.get('duration', 7) 
     budget = request_data.get('budget', '5000')
     language = request_data.get('language', 'English')
