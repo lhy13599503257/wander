@@ -134,6 +134,8 @@ def generate_itinerary(profile, request_data):
     user_tags = ', '.join(profile.get('tags', [])) or 'General sightseeing'
     user_sports = ', '.join(profile.get('sports', [])) or 'None'
     confirmed_flight = request_data.get('confirmed_flight')
+    visited_places = request_data.get('visited_places', [])
+    rating_summary = profile.get('rating_summary', {})
     flight_note = f"\n    - CONFIRMED FLIGHT (user already booked): {confirmed_flight}" if confirmed_flight else ""
     group_size = int(request_data.get('group_size', 1))
     group_desc = {
@@ -158,6 +160,8 @@ def generate_itinerary(profile, request_data):
     - Budget Level: {budget_level}
     - Passport Nationality: {profile.get('passport') or 'Not specified'}
     - Existing Visas: {', '.join([f"{v['type']} (exp: {v.get('expiry','?')})" for v in profile.get('visas', [])]) or 'None provided'}
+    - Places Already Visited: {', '.join(visited_places) if visited_places else 'None yet'}
+    - Activity Preferences: {f"Liked {rating_summary.get('liked', 0)} activities, disliked {rating_summary.get('disliked', 0)}" if rating_summary else 'No ratings yet'}
 
     TRIP REQUEST:
     - Destination: {dest}{'  ← MULTI-CITY ROUTE: plan each city segment in order, include inter-city transit day(s)' if '→' in dest else ''}
@@ -218,6 +222,10 @@ def generate_itinerary(profile, request_data):
         - duration: Door-to-door time including check-in/boarding
         - transit tip: "Book 2+ weeks ahead for best prices on [platform]"
         Include this transit cost in budget_summary.transport.
+
+    13. VISITED PLACES: If the user has already visited any of the listed places, avoid recommending the same neighborhoods/attractions they likely already saw. Suggest lesser-known areas or acknowledge it is a return visit with fresh recommendations.
+
+    14. ACTIVITY PREFERENCES: If the user has rated previous activities, infer their taste from liked/disliked counts and tailor venues accordingly (e.g., if many dislikes on crowded tourist spots, skew toward local hidden gems).
 
     12. TRANSPORT BUDGET IN CITY: Include a daily transport estimate activity at start of each city's days:
         - e.g., "🚇 Daily Transport Budget — Tokyo" with cost = realistic daily metro/bus spend

@@ -562,6 +562,17 @@
                 <button onclick="searchRealFlights()" id="btn-flights" class="flex-shrink-0 py-5 px-5 glass-card border border-neutral-800 hover:border-orange-500 text-neutral-400 hover:text-white transition-all text-xs tracking-widest uppercase">✈️ Flights</button>
                 <button onclick="startPlanning()" class="flex-1 py-5 bg-white text-black hover:bg-orange-500 hover:text-white transition-all uppercase text-sm tracking-[0.2em] font-bold" id="btn-create-itinerary">Create Itinerary</button>
             </div>
+
+            <!-- TRIP COUNTDOWN -->
+            <div id="countdown-card" class="hidden border border-neutral-800 bg-neutral-900/30 rounded-xl p-4 space-y-1">
+              <p class="text-neutral-600 text-[10px] uppercase tracking-widest" id="countdown-label">Next Trip</p>
+              <div class="flex items-baseline space-x-2">
+                <span class="text-orange-500 font-bold text-3xl font-serif" id="countdown-days">—</span>
+                <span class="text-neutral-500 text-sm" id="countdown-unit">days to go</span>
+              </div>
+              <p class="text-white text-sm font-serif italic" id="countdown-dest">—</p>
+              <p class="text-neutral-600 text-[10px]" id="countdown-date">—</p>
+            </div>
             
             <!-- SAVED JOURNEYS (NEW!) -->
             <div class="pt-12 border-t border-neutral-900" id="recent-trips-section">
@@ -676,6 +687,9 @@
                 <button onclick="fabAction('ask')" class="flex items-center space-x-3">
                     <span class="text-white text-xs bg-neutral-800 border border-neutral-700 px-3 py-1.5 rounded-full whitespace-nowrap" id="fab-label-ask">✨ Ask AI</span>
                 </button>
+                <button onclick="fabAction('checklist')" class="flex items-center space-x-3">
+                    <span class="text-white text-xs bg-neutral-800 border border-neutral-700 px-3 py-1.5 rounded-full whitespace-nowrap" id="fab-label-checklist">📋 Pre-Departure</span>
+                </button>
             </div>
             <button onclick="toggleFab()" id="fab-main" class="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center shadow-lg hover:bg-orange-500 hover:text-white transition-all text-2xl font-serif z-50 transition-transform duration-300">+</button>
         </div>
@@ -693,6 +707,10 @@
             <!-- Save PDF -->
             <button onclick="doSharePDF()" class="w-full py-4 border border-neutral-700 hover:border-orange-500 text-white text-sm uppercase tracking-widest transition-colors flex items-center justify-center space-x-3">
                 <span>📄</span><span id="share-pdf-btn">Save as PDF</span>
+            </button>
+            <!-- Add to Calendar -->
+            <button onclick="exportCalendar()" class="w-full py-4 border border-neutral-700 hover:border-white text-white text-sm uppercase tracking-widest transition-colors flex items-center justify-center space-x-3">
+                <span>🗓</span><span id="share-cal-btn">Add to Calendar (.ics)</span>
             </button>
             <button onclick="document.getElementById('share-modal').classList.add('hidden');document.getElementById('share-modal').style.display=''" class="w-full py-3 text-neutral-600 hover:text-white text-xs uppercase tracking-widest transition-colors" id="share-cancel-btn">Cancel</button>
         </div>
@@ -722,6 +740,20 @@
             <div class="text-neutral-500 text-sm text-center py-8">Generating your packing list...</div>
           </div>
           <button onclick="window.print()" class="w-full py-3 border border-neutral-800 hover:border-white text-neutral-500 hover:text-white text-xs uppercase tracking-widest transition-colors mt-4">🖨 Print List</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRE-DEPARTURE CHECKLIST MODAL -->
+    <div id="checklist-modal" class="fixed inset-0 bg-black/90 backdrop-blur hidden z-[62] overflow-y-auto">
+      <div class="min-h-full flex items-start justify-center p-4 pt-16">
+        <div class="bg-[#0a0a0a] border border-neutral-800 rounded-2xl p-8 w-full max-w-md space-y-4">
+          <div class="flex justify-between items-center">
+            <h2 class="font-serif italic text-2xl text-white" id="checklist-title">Pre-Departure Checklist</h2>
+            <button onclick="document.getElementById('checklist-modal').classList.add('hidden')" class="text-neutral-600 hover:text-white text-lg">✕</button>
+          </div>
+          <p class="text-neutral-600 text-xs uppercase tracking-widest" id="checklist-dest-label">Loading...</p>
+          <div id="checklist-content" class="space-y-3"></div>
         </div>
       </div>
     </div>
@@ -993,6 +1025,8 @@
             safe(() => document.getElementById('intro-start-btn').innerText = isCN ? '开始规划 →' : 'Get Started →');
             safe(() => document.getElementById('intro-demo-btn').innerText = isCN ? '✨ 先看示例行程' : '✨ See Example Itinerary First');
             safe(() => document.getElementById('intro-tagline').innerText = isCN ? '完全免费 · 无需注册 · 全球可用' : 'Free · No sign-up · Works worldwide');
+            safe(() => { const el = document.getElementById('share-cal-btn'); if (el) el.innerText = isCN ? '添加到日历 (.ics)' : 'Add to Calendar (.ics)'; });
+            updateCountdown();
         }
 
         // === DATASETS ===
@@ -1334,6 +1368,7 @@
             container.innerHTML = '';
             if (!trips || trips.length === 0) {
                 container.innerHTML = '<div class="text-neutral-800 text-sm italic">No trips yet. Start planning!</div>';
+                updateCountdown();
                 return;
             }
             trips.forEach(trip => {
@@ -1352,6 +1387,33 @@
                 div.appendChild(deleteBtn);
                 container.appendChild(div);
             });
+            updateCountdown();
+        }
+
+        function updateCountdown() {
+            const trips = lsGetTrips();
+            const isCN = currentLang === 'Chinese';
+            const card = document.getElementById('countdown-card');
+            if (!card) return;
+            const today = new Date(); today.setHours(0,0,0,0);
+            let nearest = null;
+            let nearestDays = Infinity;
+            trips.forEach(t => {
+                const d = t.summary?.date || t.start_date;
+                if (!d) return;
+                const tripDate = new Date(d);
+                if (isNaN(tripDate.getTime())) return;
+                const diff = Math.ceil((tripDate - today) / (1000*60*60*24));
+                if (diff >= 0 && diff < nearestDays) { nearestDays = diff; nearest = t; }
+            });
+            if (!nearest) { card.classList.add('hidden'); return; }
+            card.classList.remove('hidden');
+            document.getElementById('countdown-label').innerText = isCN ? '下一站' : 'Next Trip';
+            document.getElementById('countdown-days').innerText = nearestDays === 0 ? '🎉' : nearestDays;
+            document.getElementById('countdown-unit').innerText = nearestDays === 0 ? (isCN ? '今天出发！' : 'Today!') : (isCN ? '天后出发' : 'days to go');
+            document.getElementById('countdown-dest').innerText = nearest.destination || nearest.summary?.city || '';
+            const dateStr = nearest.summary?.date || nearest.start_date || '';
+            document.getElementById('countdown-date').innerText = dateStr ? (isCN ? `出发日期：${dateStr}` : `Departs: ${dateStr}`) : '';
         }
 
         function deleteTrip(tripId, event) {
@@ -1415,7 +1477,7 @@
                 newView.classList.remove('hidden');
                 currentStep = newStep;
                 if (newStep === 9.5) startLoadingAnimation();
-                if (newStep === 9) updateDashboardGreeting();
+                if (newStep === 9) { updateDashboardGreeting(); updateCountdown(); }
             }, 500);
         }
 
@@ -1637,6 +1699,14 @@
             // Pass language + currency to backend
             const currencySel = document.getElementById('trip-currency');
             const selectedCurrency = currencySel ? currencySel.value : 'USD';
+            // Feature 5: attach rating summary to profile for AI
+            const ratingSummary = localStorage.getItem('wander_rating_summary');
+            if (ratingSummary) {
+                try { currentData.rating_summary = JSON.parse(ratingSummary); } catch(e) {}
+            }
+            // Feature 4: visited places
+            const visitedPlaces = JSON.parse(localStorage.getItem('wander_visited') || '[]');
+            const destList = dest.split('→').map(s=>s.trim()).filter(Boolean);
             const payload = {
                 profile: currentData,
                 request: {
@@ -1647,7 +1717,8 @@
                     currency: selectedCurrency,
                     language: currentLang,
                     group_size: groupSize,
-                    confirmed_flight: selectedFlight || null
+                    confirmed_flight: selectedFlight || null,
+                    visited_places: visitedPlaces.filter(v => !destList.includes(v)).slice(0, 20)
                 }
             };
 
@@ -1668,6 +1739,12 @@
                 savedTrips.unshift(data);
                 lsSaveTrips(savedTrips);
                 renderSavedTrips(savedTrips);
+                // Feature 4: Record visited places
+                const visitedKey = 'wander_visited';
+                const visited = JSON.parse(localStorage.getItem(visitedKey) || '[]');
+                const destParts = data.destination?.split('→').map(s=>s.trim()).filter(Boolean) || [];
+                destParts.forEach(d => { if (!visited.includes(d)) visited.push(d); });
+                localStorage.setItem(visitedKey, JSON.stringify(visited));
                 setTimeout(() => { updateView(10); }, 1000);
             } catch (err) {
                 console.warn('Generation failed:', err.message);
@@ -1873,6 +1950,16 @@
                 const photoHtml = act.photo_spot ? `<div class="mt-2 text-[10px] text-purple-400">📸 ${act.photo_spot}</div>` : '';
                 const proTipHtml = act.pro_tip ? `<div class="mt-2 pt-2 border-t border-neutral-800/50 text-[10px] text-orange-400 leading-relaxed">💡 ${act.pro_tip}</div>` : '';
 
+                // Feature 5: Activity rating buttons
+                const actId = `${(act.title||'').replace(/\s+/g,'_').slice(0,20)}_${idx}`;
+                const _ratings = JSON.parse(localStorage.getItem('wander_ratings') || '{}');
+                const _currentRating = _ratings[actId];
+                const ratingHtml = `<div class="mt-2 flex items-center space-x-2 opacity-40 hover:opacity-100 transition-opacity">
+                    <span class="text-[9px] text-neutral-600 uppercase tracking-widest">Rate</span>
+                    <button onclick="rateActivity('${actId}', 1, this)" class="text-xs ${_currentRating===1?'opacity-100':'opacity-40'} hover:opacity-100 transition-opacity">👍</button>
+                    <button onclick="rateActivity('${actId}', -1, this)" class="text-xs ${_currentRating===-1?'opacity-100':'opacity-40'} hover:opacity-100 transition-opacity">👎</button>
+                </div>`;
+
                 // Hotel booking links — detect check-in activities
                 const isHotelActivity = /check.?in|入住|hotel|酒店/i.test(act.title + ' ' + (act.tag || ''));
                 let hotelBookingHtml = '';
@@ -1920,6 +2007,7 @@
                         ${whatToDoHtml}
                         ${photoHtml}
                         ${proTipHtml}
+                        ${ratingHtml}
                         ${hotelBookingHtml}
                         ${bookingHtml}
                     </div>
@@ -2273,10 +2361,11 @@
         function updateFabLabels() {
             const isCN = currentLang === 'Chinese';
             const safe = (id, text) => { const el = document.getElementById(id); if (el) el.innerText = text; };
-            safe('fab-label-add',   isCN ? '✎ 添加活动'   : '✎ Add Activity');
-            safe('fab-label-share', isCN ? '↗ 分享行程'   : '↗ Share Trip');
-            safe('fab-label-pack',  isCN ? '🧳 打包清单'  : '🧳 Packing List');
-            safe('fab-label-ask',   isCN ? '✨ 问问 AI'   : '✨ Ask AI');
+            safe('fab-label-add',       isCN ? '✎ 添加活动'   : '✎ Add Activity');
+            safe('fab-label-share',     isCN ? '↗ 分享行程'   : '↗ Share Trip');
+            safe('fab-label-pack',      isCN ? '🧳 打包清单'  : '🧳 Packing List');
+            safe('fab-label-ask',       isCN ? '✨ 问问 AI'   : '✨ Ask AI');
+            safe('fab-label-checklist', isCN ? '📋 出发前清单' : '📋 Pre-Departure');
         }
 
         function toggleFab() {
@@ -2306,6 +2395,7 @@
                 } else if (action === 'share') { openShareModal(); }
                 else if (action === 'pack') { openPackingList(); }
                 else if (action === 'ask') { openAIChat(); }
+                else if (action === 'checklist') { openChecklist(); }
             }, 200);
         }
 
@@ -2318,6 +2408,8 @@
             document.getElementById('share-modal-sub').innerText = isCN ? '选择分享方式' : 'Choose how to share';
             document.getElementById('share-link-btn').innerText = isCN ? '复制分享链接' : 'Copy Shareable Link';
             document.getElementById('share-pdf-btn').innerText = isCN ? '保存为 PDF' : 'Save as PDF';
+            const calBtn = document.getElementById('share-cal-btn');
+            if (calBtn) calBtn.innerText = isCN ? '添加到日历 (.ics)' : 'Add to Calendar (.ics)';
             document.getElementById('share-cancel-btn').innerText = isCN ? '取消' : 'Cancel';
             const modal = document.getElementById('share-modal');
             modal.classList.remove('hidden');
@@ -2675,6 +2767,135 @@
           } catch(e) {
             alert('Demo error: ' + e.message + '\n' + e.stack);
           }
+        }
+
+        // === FEATURE 2: PRE-DEPARTURE CHECKLIST ===
+        function openChecklist() {
+            if (!currentItineraryData) return;
+            const isCN = currentLang === 'Chinese';
+            document.getElementById('checklist-modal').classList.remove('hidden');
+            document.getElementById('checklist-title').innerText = isCN ? '出发前清单' : 'Pre-Departure Checklist';
+            document.getElementById('checklist-dest-label').innerText = currentItineraryData.destination;
+
+            const CHECKLIST_ITEMS_EN = [
+                { id: 'flights', icon: '✈️', text: 'Flights booked & confirmed' },
+                { id: 'hotel', icon: '🏨', text: 'Accommodation booked' },
+                { id: 'visa', icon: '🛂', text: 'Visa applied / confirmed' },
+                { id: 'insurance', icon: '🛡️', text: 'Travel insurance purchased' },
+                { id: 'currency', icon: '💵', text: 'Local currency / travel card ready' },
+                { id: 'sim', icon: '📱', text: 'Local SIM or international plan' },
+                { id: 'docs', icon: '📄', text: 'Passport valid 6+ months' },
+                { id: 'download', icon: '📥', text: 'Offline maps downloaded' },
+                { id: 'notify', icon: '🏦', text: 'Bank notified of travel dates' },
+                { id: 'emergency', icon: '🆘', text: 'Emergency contacts saved' },
+            ];
+            const CHECKLIST_ITEMS_CN = [
+                { id: 'flights', icon: '✈️', text: '机票已订并确认' },
+                { id: 'hotel', icon: '🏨', text: '酒店/住宿已预订' },
+                { id: 'visa', icon: '🛂', text: '签证已申请/确认有效' },
+                { id: 'insurance', icon: '🛡️', text: '旅行保险已购买' },
+                { id: 'currency', icon: '💵', text: '外币/旅行卡已准备' },
+                { id: 'sim', icon: '📱', text: '当地 SIM 卡或漫游方案' },
+                { id: 'docs', icon: '📄', text: '护照有效期超过 6 个月' },
+                { id: 'download', icon: '📥', text: '离线地图已下载' },
+                { id: 'notify', icon: '🏦', text: '已通知银行出行日期' },
+                { id: 'emergency', icon: '🆘', text: '紧急联系人已保存' },
+            ];
+
+            const items = isCN ? CHECKLIST_ITEMS_CN : CHECKLIST_ITEMS_EN;
+            const tripId = currentItineraryData.id || currentItineraryData.destination;
+            const saved = JSON.parse(localStorage.getItem('wander_checklist_' + tripId) || '{}');
+
+            const container = document.getElementById('checklist-content');
+            container.innerHTML = items.map(item => `
+                <label class="flex items-center space-x-3 cursor-pointer group">
+                    <input type="checkbox" ${saved[item.id] ? 'checked' : ''}
+                        onchange="saveChecklistItem('${tripId}','${item.id}',this.checked)"
+                        class="w-4 h-4 rounded border-neutral-700 bg-transparent accent-orange-500">
+                    <span class="${saved[item.id] ? 'line-through text-neutral-600' : 'text-neutral-300'} text-sm transition-colors">
+                        ${item.icon} ${item.text}
+                    </span>
+                </label>
+            `).join('');
+
+            const doneCount = items.filter(i => saved[i.id]).length;
+            const pct = Math.round(doneCount / items.length * 100);
+            container.insertAdjacentHTML('afterbegin', `
+                <div class="mb-2">
+                    <div class="flex justify-between text-[10px] text-neutral-500 mb-1">
+                        <span>${isCN ? '准备进度' : 'Ready'}</span>
+                        <span>${doneCount}/${items.length}</span>
+                    </div>
+                    <div class="h-1 bg-neutral-800 rounded-full"><div class="h-1 bg-orange-500 rounded-full transition-all" style="width:${pct}%"></div></div>
+                </div>
+            `);
+        }
+
+        function saveChecklistItem(tripId, itemId, checked) {
+            const key = 'wander_checklist_' + tripId;
+            const saved = JSON.parse(localStorage.getItem(key) || '{}');
+            saved[itemId] = checked;
+            localStorage.setItem(key, JSON.stringify(saved));
+            openChecklist();
+        }
+
+        // === FEATURE 3: CALENDAR EXPORT (.ics) ===
+        function exportCalendar() {
+            if (!currentItineraryData) return;
+            const data = currentItineraryData;
+            const isCN = currentLang === 'Chinese';
+            document.getElementById('share-modal').classList.add('hidden');
+            document.getElementById('share-modal').style.display = '';
+
+            const startDateStr = data.summary?.date;
+
+            const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Wander AI//EN','CALSCALE:GREGORIAN'];
+
+            data.days?.forEach((day, idx) => {
+                const dayDate = startDateStr ? new Date(startDateStr) : new Date();
+                if (!isNaN(dayDate.getTime())) dayDate.setDate(dayDate.getDate() + idx);
+                const fmt = d => isNaN(d.getTime()) ? '20260101' : d.toISOString().replace(/-|:|\.\d{3}/g,'').slice(0,8);
+                const uid = `wander-${(data.destination||'trip').replace(/[^a-z0-9]/gi,'-')}-day${idx+1}-${Date.now()}@wander.app`;
+                const summary = `${day.day}: ${day.theme || data.destination}`;
+                const desc = (day.activities||[]).map(a => `${a.time||''} ${a.title||''}`).join('\\n');
+                const nextDay = new Date(dayDate.getTime() + 86400000);
+                lines.push(
+                    'BEGIN:VEVENT',
+                    `UID:${uid}`,
+                    `DTSTART;VALUE=DATE:${fmt(dayDate)}`,
+                    `DTEND;VALUE=DATE:${fmt(nextDay)}`,
+                    `SUMMARY:${summary}`,
+                    `DESCRIPTION:${desc}`,
+                    `LOCATION:${data.destination}`,
+                    'END:VEVENT'
+                );
+            });
+
+            lines.push('END:VCALENDAR');
+            const ics = lines.join('\r\n');
+            const blob = new Blob([ics], {type: 'text/calendar;charset=utf-8'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `wander-${(data.destination||'trip').replace(/[^a-z0-9]/gi,'-')}.ics`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast(isCN ? '🗓 日历文件已下载！导入 Google/Apple 日历' : '🗓 Calendar file downloaded! Import into Google/Apple Calendar');
+        }
+
+        // === FEATURE 5: ACTIVITY RATING ===
+        function rateActivity(actId, rating, btn) {
+            const ratings = JSON.parse(localStorage.getItem('wander_ratings') || '{}');
+            ratings[actId] = rating;
+            localStorage.setItem('wander_ratings', JSON.stringify(ratings));
+            const parent = btn.closest('div');
+            parent.querySelectorAll('button').forEach(b => b.style.opacity = '0.4');
+            btn.style.opacity = '1';
+            const isCN = currentLang === 'Chinese';
+            showToast(rating === 1 ? (isCN ? '👍 已记录！' : '👍 Got it!') : (isCN ? '👎 已记录 — 下次调整' : '👎 Noted — will adjust next time'));
+            const liked = Object.entries(ratings).filter(([,v])=>v===1).length;
+            const disliked = Object.entries(ratings).filter(([,v])=>v===-1).length;
+            localStorage.setItem('wander_rating_summary', JSON.stringify({liked, disliked, ratings}));
         }
 
         // === LOADING ANIMATION ===
