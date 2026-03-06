@@ -2387,8 +2387,10 @@
             let checkout = '';
             if (checkin) {
                 const d = new Date(checkin);
-                d.setDate(d.getDate() + parseInt(durationDays || 7));
-                checkout = d.toISOString().split('T')[0];
+                if (!isNaN(d.getTime())) {
+                    d.setDate(d.getDate() + parseInt(durationDays || 7));
+                    checkout = d.toISOString().split('T')[0];
+                }
             }
             const city = (destination || '').split(',')[0].trim();
             const bookingUrl = `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(hotelName)}&checkin=${checkin}&checkout=${checkout}`;
