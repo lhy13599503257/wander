@@ -227,6 +227,7 @@
 
         /* Budget Bar */
         #budget-bar { transition: transform 0.3s ease; }
+        #fab-container { transition: bottom 0.3s ease; }
 
         /* AI Chat Panel */
         #ai-chat-panel {
@@ -515,7 +516,7 @@
         </div>
 
         <!-- FAB & Menu -->
-        <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+        <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end" id="fab-container">
             <div id="fab-menu" class="mb-4 space-y-3 opacity-0 pointer-events-none transition-all duration-300 translate-y-10 flex flex-col items-end">
                 <button onclick="fabAction('add')" class="flex items-center space-x-3 group">
                     <span class="text-white text-xs bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Add Activity</span>
@@ -1441,6 +1442,7 @@
             document.getElementById('budget-progress').style.width = '0%';
             document.getElementById('budget-pct').innerText = '0% spent';
             document.getElementById('budget-bar').classList.remove('hidden');
+            document.getElementById('fab-container').style.bottom = (document.getElementById('budget-bar').offsetHeight + 16) + 'px';
         }
 
         function switchDay(dayIndex, allDays) {
@@ -1529,6 +1531,7 @@
             const itin = document.getElementById('view-itinerary');
             const dash = document.getElementById('view-dashboard');
             document.getElementById('budget-bar').classList.add('hidden');
+            document.getElementById('fab-container').style.bottom = '24px';
             const mapOverlay = document.getElementById('map-overlay');
             mapOverlay.classList.add('hidden');
             mapOverlay.classList.remove('flex');
