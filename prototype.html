@@ -1078,6 +1078,24 @@
             initApp();
             populateSports();
             populateShopping();
+            // Passport autocomplete
+            const passportInput = document.getElementById('passport-input');
+            if (passportInput) {
+                passportInput.addEventListener('input', function() {
+                    const val = this.value.trim().toLowerCase();
+                    const sug = document.getElementById('passport-suggestions');
+                    if (!val) { sug.classList.add('hidden'); return; }
+                    const matches = POPULAR_PASSPORTS.filter(c => c.toLowerCase().includes(val)).slice(0, 6);
+                    if (!matches.length) { sug.classList.add('hidden'); return; }
+                    sug.innerHTML = matches.map(c => `<div class="autocomplete-item" onclick="document.getElementById('passport-input').value='${c}';document.getElementById('passport-suggestions').classList.add('hidden')">${c}</div>`).join('');
+                    sug.classList.remove('hidden');
+                });
+                document.addEventListener('click', e => {
+                    if (!e.target.closest('#passport-input') && !e.target.closest('#passport-suggestions')) {
+                        document.getElementById('passport-suggestions')?.classList.add('hidden');
+                    }
+                });
+            }
         });
 
         // === localStorage helpers ===
@@ -1095,20 +1113,7 @@
           'Saudi Arabia', 'Malaysia', 'Thailand', 'Indonesia', 'Vietnam', 'Philippines'
         ];
 
-        document.getElementById('passport-input').addEventListener('input', function() {
-          const val = this.value.trim().toLowerCase();
-          const sug = document.getElementById('passport-suggestions');
-          if (!val) { sug.classList.add('hidden'); return; }
-          const matches = POPULAR_PASSPORTS.filter(c => c.toLowerCase().includes(val)).slice(0, 6);
-          if (!matches.length) { sug.classList.add('hidden'); return; }
-          sug.innerHTML = matches.map(c => `<div class="autocomplete-item" onclick="document.getElementById('passport-input').value='${c}';document.getElementById('passport-suggestions').classList.add('hidden')">${c}</div>`).join('');
-          sug.classList.remove('hidden');
-        });
-        document.addEventListener('click', e => {
-          if (!e.target.closest('#passport-input') && !e.target.closest('#passport-suggestions')) {
-            document.getElementById('passport-suggestions')?.classList.add('hidden');
-          }
-        });
+        // Passport autocomplete — wired inside DOMContentLoaded below
 
         let visaEntries = [];
 
