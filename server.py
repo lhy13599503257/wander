@@ -9,6 +9,8 @@ import time
 import sqlite3
 import secrets
 import requests as req_lib
+import threading
+import time as time_module
 
 # ==========================================
 # 💾 TRIP SHARE DATABASE (SQLite)
@@ -220,31 +222,67 @@ def api_flights():
         print(f'❌ Amadeus search error: {e}')
         return jsonify({"error": str(e)}), 500
 
-# POST: Generate new itinerary
+# In-memory async job store
+_jobs = {}
+
+def _cleanup_jobs():
+    """Remove jobs older than 15 minutes"""
+    cutoff = time_module.time() - 900
+    old = [k for k, v in _jobs.items() if v.get('created', 0) < cutoff]
+    for k in old:
+        _jobs.pop(k, None)
+
+# POST: Generate new itinerary (async job queue — avoids Railway 60s timeout)
 @app.route('/api/plan', methods=['POST'])
-def api_plan():
+def plan_trip():
     if not wander_engine:
         return jsonify({"error": "AI engine unavailable"}), 503
 
-    payload = request.get_json()
-    profile = payload.get('profile', {})
-    req = payload.get('request', {})
+    req_data = request.json
+    job_id = secrets.token_urlsafe(5)[:8]
+    _jobs[job_id] = {'status': 'pending', 'created': time_module.time()}
+    _cleanup_jobs()
 
-    print(f"🧠 Generating trip → {req.get('destination', '?')}, {req.get('duration', '?')} days")
+    def run_job():
+        try:
+            profile = req_data.get('profile', {})
+            req = req_data.get('request', {})
+            print(f"🧠 Generating trip → {req.get('destination', '?')}, {req.get('duration', '?')} days")
+            result = wander_engine.generate_itinerary(profile, req)
+            # Attach metadata
+            result['id'] = int(time.time())
+            result['created_at'] = time.strftime("%Y-%m-%d %H:%M")
+            result['summary'] = {
+                "city": req.get('destination'),
+                "date": req.get('start_date') or "Anytime",
+                "duration": req.get('duration')
+            }
+            print(f"✅ Trip generated (id={result['id']})")
+            _jobs[job_id]['status'] = 'done'
+            _jobs[job_id]['data'] = result
+        except Exception as e:
+            _jobs[job_id]['status'] = 'error'
+            _jobs[job_id]['error'] = str(e)
 
-    result = wander_engine.generate_itinerary(profile, req)
+    t = threading.Thread(target=run_job, daemon=True)
+    t.start()
+    return jsonify({'job_id': job_id})
 
-    # Attach metadata
-    result['id'] = int(time.time())
-    result['created_at'] = time.strftime("%Y-%m-%d %H:%M")
-    result['summary'] = {
-        "city": req.get('destination'),
-        "date": req.get('start_date') or "Anytime",
-        "duration": req.get('duration')
-    }
-    # Trips are saved in browser localStorage — no DB needed
-    print(f"✅ Trip generated (id={result['id']})")
-    return jsonify(result)
+@app.route('/api/plan-status/<job_id>', methods=['GET'])
+def plan_status(job_id):
+    job = _jobs.get(job_id)
+    if not job:
+        return jsonify({'status': 'not_found'}), 404
+    if time_module.time() - job.get('created', 0) > 900:
+        _jobs.pop(job_id, None)
+        return jsonify({'status': 'expired'}), 404
+    # Return only status + data when done (omit 'created' from response)
+    resp = {'status': job['status']}
+    if job['status'] == 'done':
+        resp['data'] = job['data']
+    elif job['status'] == 'error':
+        resp['error'] = job.get('error', 'Unknown error')
+    return jsonify(resp)
 
 # POST: Generate packing list
 @app.route('/api/packing-list', methods=['POST'])

@@ -1802,17 +1802,37 @@
             };
 
             try {
+                // Step 1: kick off job (returns immediately)
                 const abortCtrl = new AbortController();
-                const abortTimer = setTimeout(() => abortCtrl.abort(), 150000); // 150s max
-                const response = await fetch('/api/plan', {
+                const kickoffTimer = setTimeout(() => abortCtrl.abort(), 30000);
+                const kickoffResp = await fetch('/api/plan', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload),
                     signal: abortCtrl.signal
                 });
-                clearTimeout(abortTimer);
+                clearTimeout(kickoffTimer);
+                const kickoff = await kickoffResp.json();
+                if (!kickoff.job_id) throw new Error('No job ID returned');
+
+                // Step 2: poll for result
+                const jobId = kickoff.job_id;
+                let data = null;
+                let attempts = 0;
+                const maxAttempts = 50; // 50 × 3s = 150s max
+                while (attempts < maxAttempts) {
+                    await new Promise(r => setTimeout(r, 3000));
+                    attempts++;
+                    const statusResp = await fetch(`/api/plan-status/${jobId}`);
+                    const status = await statusResp.json();
+                    if (status.status === 'done') { data = status.data; break; }
+                    if (status.status === 'error') throw new Error(status.error || 'Generation failed');
+                    if (status.status === 'not_found' || status.status === 'expired') throw new Error('Job expired');
+                    // still pending — keep polling
+                }
+                if (!data) throw new Error('Timed out waiting for itinerary');
                 clearTimeout(slowTimer);
-                const data = await response.json();
+
                 if (data.error) {
                     alert("AI Error: " + data.error);
                     updateView(9);
@@ -1823,7 +1843,7 @@
                 savedTrips.unshift(data);
                 lsSaveTrips(savedTrips);
                 renderSavedTrips(savedTrips);
-                // Feature 4: Record visited places
+                // Record visited places
                 const visitedKey = 'wander_visited';
                 const visited = JSON.parse(localStorage.getItem(visitedKey) || '[]');
                 const destParts = data.destination?.split('→').map(s=>s.trim()).filter(Boolean) || [];
