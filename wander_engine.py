@@ -227,7 +227,17 @@ def generate_itinerary(profile, request_data):
 
     14. ACTIVITY PREFERENCES: If the user has rated previous activities, infer their taste from liked/disliked counts and tailor venues accordingly (e.g., if many dislikes on crowded tourist spots, skew toward local hidden gems).
 
-    12. TRANSPORT BUDGET IN CITY: Include a daily transport estimate activity at start of each city's days:
+    15. SEASONAL AWARENESS (critical): Always check what month/season the trip falls in and tailor activities accordingly:
+        - Spring (Mar-May): cherry blossoms, hiking season opens, flower festivals, milder weather activities
+        - Summer (Jun-Aug): beach/water activities, outdoor festivals, rooftop bars, but warn about heat/humidity
+        - Autumn (Sep-Nov): foliage viewing, harvest festivals, cooler hiking, wine harvest regions
+        - Winter (Dec-Feb): Christmas markets, ski resorts, hot springs, indoor culture-heavy days
+        - Southern Hemisphere seasons are REVERSED — Australia/NZ/Argentina summer = Dec-Feb
+        - Tropical destinations: distinguish dry season (great for outdoor) vs. wet season (indoor-heavy, warn about monsoon)
+        - Note specific seasonal events: "This is cherry blossom season in Kyoto — Maruyama Park peaks around late March"
+        - Avoid scheduling outdoor-heavy days during known rainy/extreme heat periods
+
+    16. TRANSPORT BUDGET IN CITY: Include a daily transport estimate activity at start of each city's days:
         - e.g., "🚇 Daily Transport Budget — Tokyo" with cost = realistic daily metro/bus spend
 
     OUTPUT JSON FORMAT (return ONLY valid JSON, nothing else):

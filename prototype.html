@@ -466,11 +466,13 @@
                     <label class="text-neutral-600 text-xs uppercase tracking-widest mb-2 block" id="dest-label">Destination</label>
                     <div class="flex items-end space-x-2">
                         <div class="flex-1 relative">
-                            <input type="text" id="trip-dest" placeholder="e.g. Tokyo, Paris, Xiamen" class="minimal-input" autocomplete="off" onblur="fetchTripWeather()">
+                            <input type="text" id="trip-dest" placeholder="e.g. Tokyo, Paris, Xiamen" class="minimal-input" autocomplete="off" onblur="fetchTripWeather(); showNearbySuggestions(this.value)">
                             <div id="dest-suggestions" class="autocomplete-list hidden"></div>
                         </div>
                         <button onclick="addDestination()" class="text-orange-500 hover:text-white border border-orange-500/40 hover:border-orange-500 px-2 py-1 text-xs uppercase tracking-widest transition-colors mb-1 flex-shrink-0" id="add-city-btn" title="Add another city">+ City</button>
                     </div>
+                    <!-- Nearby city suggestions -->
+                    <div id="nearby-suggestions" class="hidden mt-2 flex flex-wrap gap-2"></div>
                     <!-- Extra destinations -->
                     <div id="extra-dests" class="mt-2 space-y-2 hidden"></div>
                 </div>
@@ -1661,6 +1663,67 @@
             document.querySelectorAll('#flights-result .glass-card').forEach(el => el.style.borderColor = '');
             event.currentTarget.style.borderColor = '#ff5e00';
             document.getElementById('btn-create-itinerary').innerText = `Create Itinerary  (${price} flight selected)`;
+        }
+
+        const NEARBY_CITIES = {
+            'sydney': ['Melbourne','Gold Coast','Brisbane','Byron Bay','Blue Mountains','Cairns'],
+            'melbourne': ['Sydney','Great Ocean Road','Phillip Island','Yarra Valley','Adelaide'],
+            'tokyo': ['Kyoto','Osaka','Hakone','Nikko','Kamakura','Hiroshima'],
+            'osaka': ['Kyoto','Nara','Kobe','Hiroshima','Tokyo'],
+            'kyoto': ['Osaka','Nara','Tokyo','Hiroshima','Kanazawa'],
+            'paris': ['Amsterdam','Brussels','Lyon','Nice','Strasbourg','London'],
+            'london': ['Paris','Amsterdam','Edinburgh','Bath','Brighton'],
+            'barcelona': ['Madrid','Valencia','Seville','Mallorca','Ibiza'],
+            'rome': ['Florence','Venice','Naples','Amalfi Coast','Milan'],
+            'florence': ['Rome','Venice','Cinque Terre','Siena','Milan'],
+            'new york': ['Boston','Washington DC','Philadelphia','Niagara Falls'],
+            'los angeles': ['San Francisco','Las Vegas','San Diego','Santa Barbara'],
+            'toronto': ['Niagara Falls','Montreal','Ottawa','New York','Quebec City'],
+            'bangkok': ['Chiang Mai','Phuket','Koh Samui','Ayutthaya','Krabi'],
+            'singapore': ['Bali','Kuala Lumpur','Bangkok','Phuket','Bintan'],
+            'bali': ['Singapore','Lombok','Yogyakarta','Gili Islands'],
+            'hong kong': ['Macau','Shenzhen','Guangzhou','Tokyo','Taipei'],
+            'taipei': ['Hong Kong','Tokyo','Osaka','Tainan','Taichung'],
+            'seoul': ['Busan','Jeju Island','Tokyo','Osaka'],
+            'dubai': ['Abu Dhabi','Muscat','Doha','Istanbul'],
+            'istanbul': ['Cappadocia','Ephesus','Bodrum','Athens'],
+            'amsterdam': ['Brussels','Paris','Bruges','Copenhagen','Berlin'],
+            'berlin': ['Prague','Amsterdam','Vienna','Warsaw','Hamburg'],
+            'vienna': ['Prague','Budapest','Salzburg','Berlin'],
+            'prague': ['Vienna','Budapest','Berlin','Krakow','Dresden'],
+            'athens': ['Santorini','Mykonos','Istanbul','Thessaloniki'],
+            'lisbon': ['Porto','Seville','Madrid','Algarve'],
+            'beijing': ['Shanghai','Xi\'an','Chengdu','Zhangjiajie'],
+            'shanghai': ['Suzhou','Hangzhou','Beijing','Nanjing'],
+            'chengdu': ['Zhangjiajie','Guilin','Chongqing','Lijiang'],
+            'vancouver': ['Whistler','Victoria','Seattle','Banff'],
+            'cairo': ['Luxor','Aswan','Petra','Dubai'],
+            'nairobi': ['Maasai Mara','Zanzibar','Serengeti','Kilimanjaro'],
+            'mexico city': ['Cancun','Oaxaca','Guadalajara','Tulum'],
+            'rio de janeiro': ['São Paulo','Buenos Aires','Iguazu Falls','Florianopolis'],
+        };
+
+        function showNearbySuggestions(cityName) {
+            const container = document.getElementById('nearby-suggestions');
+            if (!container) return;
+            const key = cityName.toLowerCase().split(',')[0].trim();
+            const nearby = NEARBY_CITIES[key];
+            if (!nearby || !nearby.length) { container.classList.add('hidden'); return; }
+            const isCN = currentLang === 'Chinese';
+            const label = isCN ? '💡 顺路去：' : '💡 Combine with:';
+            container.classList.remove('hidden');
+            container.innerHTML = `<span class="text-neutral-600 text-[10px] w-full">${label}</span>` +
+                nearby.map(c => `<button onclick="addNearbyCity('${c}')" class="text-xs px-2 py-1 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors">+ ${c}</button>`).join('');
+        }
+
+        function addNearbyCity(cityName) {
+            // Use existing addDestination and fill in the value
+            addDestination();
+            const inputs = document.querySelectorAll('.extra-dest-input');
+            const last = inputs[inputs.length - 1];
+            if (last) { last.value = cityName; last.dispatchEvent(new Event('input')); }
+            // Hide nearby suggestions
+            document.getElementById('nearby-suggestions').classList.add('hidden');
         }
 
         function addDestination() {
