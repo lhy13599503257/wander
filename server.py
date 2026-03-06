@@ -6,7 +6,34 @@ from flask import Flask, request, jsonify, send_from_directory, abort
 import json
 import os
 import time
+import sqlite3
+import secrets
 import requests as req_lib
+
+# ==========================================
+# 💾 TRIP SHARE DATABASE (SQLite)
+# ==========================================
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wander_trips.db')
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute('CREATE TABLE IF NOT EXISTS trips (id TEXT PRIMARY KEY, data TEXT, created_at INTEGER)')
+    conn.commit()
+    conn.close()
+
+def save_trip_db(trip_id, data):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute('INSERT OR REPLACE INTO trips VALUES (?, ?, ?)', (trip_id, json.dumps(data), int(time.time())))
+    conn.commit()
+    conn.close()
+
+def get_trip_db(trip_id):
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute('SELECT data FROM trips WHERE id = ?', (trip_id,)).fetchone()
+    conn.close()
+    return json.loads(row[0]) if row else None
+
+init_db()
 
 try:
     import wander_engine
@@ -89,6 +116,27 @@ def city_to_iata(city_name, token=None):
 # ==========================================
 # 🌐 ROUTES
 # ==========================================
+@app.route('/api/save-trip', methods=['POST'])
+def api_save_trip():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data"}), 400
+    trip_id = secrets.token_urlsafe(5)  # ~7 char URL-safe ID
+    save_trip_db(trip_id, data)
+    return jsonify({"id": trip_id})
+
+@app.route('/api/trip/<trip_id>')
+def api_get_trip(trip_id):
+    trip = get_trip_db(trip_id)
+    if not trip:
+        return jsonify({"error": "Trip not found or expired"}), 404
+    return jsonify(trip)
+
+@app.route('/trip/<trip_id>')
+def trip_page(trip_id):
+    # Serve the SPA — JS will fetch /api/trip/<id> on load
+    return send_from_directory(DIRECTORY, 'prototype.html')
+
 @app.route('/')
 def index():
     return send_from_directory(DIRECTORY, 'prototype.html')

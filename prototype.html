@@ -1147,6 +1147,20 @@
         }
 
         function initApp() {
+            // Check if this is a shared trip URL: /trip/<id>
+            const pathMatch = location.pathname.match(/^\/trip\/([A-Za-z0-9_-]+)$/);
+            if (pathMatch) {
+                currentStep = 0;
+                document.getElementById('view-intro').classList.add('hidden');
+                document.getElementById('view-location').classList.add('hidden');
+                fetch('/api/trip/' + pathMatch[1])
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data && !data.error) { renderItinerary(data); updateView(10); }
+                        else { showToast('⚠️ Trip link expired'); document.getElementById('view-intro').classList.remove('hidden'); }
+                    }).catch(() => { document.getElementById('view-intro').classList.remove('hidden'); });
+                return;
+            }
             const profile = lsGetProfile();
             const trips = lsGetTrips();
             if (profile && profile.location) {
@@ -2271,26 +2285,22 @@
         async function doShareLink() {
             if (!currentItineraryData) return;
             const isCN = currentLang === 'Chinese';
-            const shareModal = document.getElementById('share-modal');
-            // Show loading state
-            showToast(isCN ? '⏳ 生成短链中...' : '⏳ Generating short link...');
-            shareModal.classList.add('hidden');
+            document.getElementById('share-modal').classList.add('hidden');
+            showToast(isCN ? '⏳ 生成分享链接...' : '⏳ Creating share link...');
             try {
-                const json = JSON.stringify(currentItineraryData);
-                const encoded = btoa(unescape(encodeURIComponent(json)));
-                const longUrl = location.origin + location.pathname + '#trip=' + encoded;
-                // Shorten via is.gd (free, no key needed)
-                let finalUrl = longUrl;
-                try {
-                    const res = await fetch(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(longUrl)}`, { signal: AbortSignal.timeout(5000) });
-                    const short = await res.text();
-                    if (short && short.startsWith('http') && !short.includes('Error')) finalUrl = short.trim();
-                } catch(e) { /* fallback to long url */ }
-                await navigator.clipboard.writeText(finalUrl).catch(() => {
-                    prompt(isCN ? '复制这个链接：' : 'Copy this link:', finalUrl);
+                const res = await fetch('/api/save-trip', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(currentItineraryData)
                 });
-                showToast(isCN ? `🔗 短链已复制！${finalUrl}` : `🔗 Short link copied! ${finalUrl}`);
-            } catch(e) { alert('Error: ' + e.message); }
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+                const shareUrl = location.origin + '/trip/' + data.id;
+                await navigator.clipboard.writeText(shareUrl).catch(() => {
+                    prompt(isCN ? '复制链接：' : 'Copy link:', shareUrl);
+                });
+                showToast(isCN ? `🔗 已复制！${shareUrl}` : `🔗 Copied! ${shareUrl}`);
+            } catch(e) { alert('Share error: ' + e.message); }
         }
 
         function doSharePDF() {
