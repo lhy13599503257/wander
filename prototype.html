@@ -1634,31 +1634,15 @@
                 }
                 if(data.logistics && data.logistics.transport_tip) document.getElementById('log-transport').innerText = data.logistics.transport_tip;
                 if(data.budget_summary) document.getElementById('log-budget').innerText = `Flight: ${data.budget_summary.flight} | Stay: ${data.budget_summary.stay} | Total: ${data.budget_summary.total}`;
+                // If no weather data yet, try to fetch it now for the destination
+                if (!lastWeatherData && data.summary?.date && data.destination) {
+                    fetchTripWeatherForItinerary(data.destination.split('→')[0].trim(), data.summary.date, data.summary.duration || data.days?.length || 7);
+                }
+
                 // Weather + clothing card
                 const weatherCard = document.getElementById('weather-itinerary-card');
                 const weatherContent = document.getElementById('weather-itinerary-content');
-                if (lastWeatherData && weatherCard && weatherContent) {
-                    const w = lastWeatherData;
-                    const isCN = currentLang === 'Chinese';
-                    document.getElementById('weather-itin-label').innerText = isCN ? '天气 & 穿衣建议' : 'Weather & Clothing';
-                    weatherCard.classList.remove('hidden');
-                    // Clothing recommendation
-                    let clothing = '';
-                    if (w.avgMax > 30) clothing = isCN ? '轻薄透气的夏装、防晒衣、帽子、防晒霜必备' : 'Light breathable clothes, sun hat, sunscreen essential';
-                    else if (w.avgMax > 20) clothing = isCN ? '短袖+薄外套，傍晚可能需要加衣' : 'T-shirts with a light jacket for evenings';
-                    else if (w.avgMax > 10) clothing = isCN ? '长袖、中厚外套，建议叠穿' : 'Layers recommended — sweater + medium jacket';
-                    else if (w.avgMax > 0) clothing = isCN ? '厚外套、围巾手套，注意保暖' : 'Warm coat, scarf and gloves needed';
-                    else clothing = isCN ? '羽绒服+多层保暖，防滑靴，极寒装备' : 'Heavy winter coat, thermal layers, warm boots';
-                    if (w.totalPrecip > 30) clothing += (isCN ? '；降水较多，带雨衣或伞' : '; pack rain jacket/umbrella');
-                    const emoji = w.avgMax > 28 ? '☀️' : w.avgMax > 15 ? '🌤️' : w.avgMin < 0 ? '❄️' : '🧥';
-                    weatherContent.innerHTML = `
-                        <div>${emoji} <span class="text-white">${w.avgMin.toFixed(0)}°C — ${w.avgMax.toFixed(0)}°C</span> <span class="text-neutral-600 ml-1">${w.name}, ${w.country}</span></div>
-                        <div>👕 <span class="text-neutral-300">${clothing}</span></div>
-                        ${w.totalPrecip > 30 ? `<div>🌧️ <span class="text-neutral-300">${isCN ? `预计降水 ${w.totalPrecip.toFixed(0)}mm，多备雨具` : `${w.totalPrecip.toFixed(0)}mm rain expected — bring waterproofs`}</span></div>` : ''}
-                    `;
-                } else if (weatherCard) {
-                    weatherCard.classList.add('hidden');
-                }
+                renderWeatherCard();
 
                 if (data.know_before_you_go) {
                     const k = data.know_before_you_go;
@@ -2368,6 +2352,52 @@
                 console.warn('Weather fetch failed:', e);
                 document.getElementById('weather-widget').classList.add('hidden');
             }
+        }
+
+        function renderWeatherCard() {
+            const weatherCard = document.getElementById('weather-itinerary-card');
+            const weatherContent = document.getElementById('weather-itinerary-content');
+            if (!lastWeatherData || !weatherCard || !weatherContent) return;
+            const w = lastWeatherData;
+            const isCN = currentLang === 'Chinese';
+            document.getElementById('weather-itin-label').innerText = isCN ? '天气 & 穿衣建议' : 'Weather & Clothing';
+            weatherCard.classList.remove('hidden');
+            let clothing = '';
+            if (w.avgMax > 30) clothing = isCN ? '轻薄透气夏装、防晒衣、帽子、防晒霜必备' : 'Light breathable clothes, sun hat, sunscreen essential';
+            else if (w.avgMax > 20) clothing = isCN ? '短袖+薄外套，傍晚可能需要加衣' : 'T-shirts with a light jacket for evenings';
+            else if (w.avgMax > 10) clothing = isCN ? '长袖、中厚外套，建议叠穿' : 'Layers — sweater + medium jacket';
+            else if (w.avgMax > 0) clothing = isCN ? '厚外套、围巾手套，注意保暖' : 'Warm coat, scarf and gloves needed';
+            else clothing = isCN ? '羽绒服+多层保暖，防滑靴，极寒装备' : 'Heavy coat, thermal layers, warm boots';
+            if (w.totalPrecip > 30) clothing += (isCN ? '；雨水较多，带雨衣或折叠伞' : '; high rain — pack rain jacket or umbrella');
+            const emoji = w.avgMax > 28 ? '☀️' : w.avgMax > 15 ? '🌤️' : w.avgMin < 0 ? '❄️' : '🧥';
+            weatherContent.innerHTML = `
+                <div>${emoji} <span class="text-white">${w.avgMin.toFixed(0)}°C — ${w.avgMax.toFixed(0)}°C</span> <span class="text-neutral-600 ml-1">${w.name}, ${w.country}</span></div>
+                <div>👕 <span class="text-neutral-300">${clothing}</span></div>
+                ${w.totalPrecip > 30 ? `<div>🌧️ <span class="text-neutral-300">${isCN ? `预计降水 ${w.totalPrecip.toFixed(0)}mm` : `${w.totalPrecip.toFixed(0)}mm rain expected`}</span></div>` : ''}
+            `;
+        }
+
+        async function fetchTripWeatherForItinerary(destCity, dateVal, days) {
+            try {
+                const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(destCity)}&count=1&language=en&format=json`, { signal: AbortSignal.timeout(5000) });
+                const geoData = await geoRes.json();
+                if (!geoData.results?.length) return;
+                const { latitude: lat, longitude: lng, name, country } = geoData.results[0];
+                const startDate = new Date(dateVal);
+                if (isNaN(startDate.getTime())) return;
+                const endDate = new Date(startDate);
+                endDate.setDate(startDate.getDate() + parseInt(days) - 1);
+                const fmt = d => d.toISOString().split('T')[0];
+                const forecastRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&timezone=auto&start_date=${fmt(startDate)}&end_date=${fmt(endDate)}`, { signal: AbortSignal.timeout(5000) });
+                const forecastData = await forecastRes.json();
+                if (!forecastData.daily) return;
+                const { temperature_2m_max, temperature_2m_min, precipitation_sum } = forecastData.daily;
+                const avgMax = temperature_2m_max.reduce((a, b) => a + b, 0) / temperature_2m_max.length;
+                const avgMin = temperature_2m_min.reduce((a, b) => a + b, 0) / temperature_2m_min.length;
+                const totalPrecip = precipitation_sum.reduce((a, b) => a + (b || 0), 0);
+                lastWeatherData = { avgMax, avgMin, totalPrecip, name, country, startDate: fmt(startDate), endDate: fmt(endDate) };
+                renderWeatherCard();
+            } catch(e) { console.warn('Itinerary weather fetch failed:', e); }
         }
 
         // === TRIP JOURNAL ===
