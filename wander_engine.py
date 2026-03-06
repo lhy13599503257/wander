@@ -156,6 +156,8 @@ def generate_itinerary(profile, request_data):
     - Dietary Restrictions: {', '.join(profile.get('diet', [])) or 'None'}
     - Transport Preference: {transport_pref}
     - Budget Level: {budget_level}
+    - Passport Nationality: {profile.get('passport') or 'Not specified'}
+    - Existing Visas: {', '.join([f"{v['type']} (exp: {v.get('expiry','?')})" for v in profile.get('visas', [])]) or 'None provided'}
 
     TRIP REQUEST:
     - Destination: {dest}{'  ← MULTI-CITY ROUTE: plan each city segment in order, include inter-city transit day(s)' if '→' in dest else ''}
@@ -243,7 +245,7 @@ def generate_itinerary(profile, request_data):
             "check_in_tip": "Request a room above floor 3 for quieter sleep."
         }},
         "know_before_you_go": {{
-            "visa": "Citizens of most countries get 90-day visa-free entry. Check your specific passport.",
+            "visa": "Based on {profile.get('passport') or 'their'} passport and their existing visas, state: (1) whether visa is needed for this destination, (2) visa type/cost/processing time if needed, (3) confirm if any existing visa covers this trip. Be specific and accurate.",
             "currency_tip": "Cash is king in Tokyo. Get JPY from 7-Eleven ATMs (best rates). Credit cards accepted at hotels/chains.",
             "tipping": "No tipping culture. Tipping can be considered rude. Price = what you pay.",
             "local_phrases": ["Arigatou gozaimasu — Thank you", "Sumimasen — Excuse me / Sorry", "Ikura desu ka — How much is this?", "Eigo ga hanasemasu ka — Do you speak English?"],

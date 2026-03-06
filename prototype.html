@@ -339,6 +339,26 @@
                 </div>
             </div>
         </div>
+        <!-- Optional passport info -->
+        <div class="mt-6 space-y-4 border-t border-neutral-800/50 pt-6">
+          <p class="text-neutral-600 text-[11px] uppercase tracking-widest" id="passport-section-label">Optional — for visa advice</p>
+          <!-- Passport nationality -->
+          <div class="space-y-2">
+            <label class="text-neutral-500 text-xs" id="passport-label">Passport Nationality</label>
+            <div class="relative">
+              <input type="text" id="passport-input" placeholder="e.g. China, United States, India" class="minimal-input" autocomplete="off">
+              <div id="passport-suggestions" class="autocomplete-list hidden"></div>
+            </div>
+          </div>
+          <!-- Existing visas -->
+          <div class="space-y-2" id="visa-section">
+            <label class="text-neutral-500 text-xs" id="visa-label">Visas I Already Have</label>
+            <div id="visa-list" class="space-y-2"></div>
+            <button onclick="addVisaEntry()" class="text-xs text-neutral-600 hover:text-orange-500 transition-colors flex items-center space-x-1" id="add-visa-btn">
+              <span>+</span><span id="add-visa-label">Add a visa</span>
+            </button>
+          </div>
+        </div>
         <button id="btn-next-1" class="glass-card w-full py-4 mt-8 uppercase text-xs tracking-widest text-neutral-400 hover:text-white">Confirm Location</button>
         <button onclick="loadDemo()" class="mt-3 w-full py-4 text-neutral-500 hover:text-white border border-neutral-800 hover:border-neutral-600 uppercase text-xs tracking-widest transition-colors">
           ✨ See Example Itinerary First
@@ -885,6 +905,11 @@
             safe(() => document.querySelector('#view-location h1').innerHTML = t.home_q);
             safe(() => document.querySelector('#view-location p').innerText = t.home_sub);
             safe(() => document.getElementById('btn-next-1').innerText = t.confirm_loc);
+            safe(() => document.getElementById('passport-section-label').innerText = currentLang === 'Chinese' ? '可选 — 用于签证建议' : 'Optional — for visa advice');
+            safe(() => document.getElementById('passport-label').innerText = currentLang === 'Chinese' ? '护照国籍' : 'Passport Nationality');
+            safe(() => document.getElementById('passport-input').placeholder = currentLang === 'Chinese' ? '如：中国、美国、英国' : 'e.g. China, United States, India');
+            safe(() => document.getElementById('visa-label').innerText = currentLang === 'Chinese' ? '我已拥有的签证' : 'Visas I Already Have');
+            safe(() => document.getElementById('add-visa-label').innerText = currentLang === 'Chinese' ? '添加签证' : 'Add a visa');
             safe(() => document.querySelector('#view-style h1').innerHTML = t.vibe_q);
             safe(() => document.querySelector('#view-transport h1').innerHTML = t.move_q);
             safe(() => document.querySelector('#view-budget h1').innerHTML = t.budget_q);
@@ -1061,6 +1086,61 @@
         function lsGetTrips() { try { return JSON.parse(localStorage.getItem('wander_trips') || '[]'); } catch(e) { return []; } }
         function lsSaveTrips(t) { localStorage.setItem('wander_trips', JSON.stringify(t)); }
 
+        // === PASSPORT / VISA ===
+        const POPULAR_PASSPORTS = [
+          'China', 'United States', 'Canada', 'United Kingdom', 'Australia',
+          'Germany', 'France', 'Japan', 'South Korea', 'India', 'Singapore',
+          'Hong Kong SAR', 'Taiwan', 'Italy', 'Spain', 'Netherlands', 'Sweden',
+          'Norway', 'Switzerland', 'New Zealand', 'Brazil', 'Mexico', 'UAE',
+          'Saudi Arabia', 'Malaysia', 'Thailand', 'Indonesia', 'Vietnam', 'Philippines'
+        ];
+
+        document.getElementById('passport-input').addEventListener('input', function() {
+          const val = this.value.trim().toLowerCase();
+          const sug = document.getElementById('passport-suggestions');
+          if (!val) { sug.classList.add('hidden'); return; }
+          const matches = POPULAR_PASSPORTS.filter(c => c.toLowerCase().includes(val)).slice(0, 6);
+          if (!matches.length) { sug.classList.add('hidden'); return; }
+          sug.innerHTML = matches.map(c => `<div class="autocomplete-item" onclick="document.getElementById('passport-input').value='${c}';document.getElementById('passport-suggestions').classList.add('hidden')">${c}</div>`).join('');
+          sug.classList.remove('hidden');
+        });
+        document.addEventListener('click', e => {
+          if (!e.target.closest('#passport-input') && !e.target.closest('#passport-suggestions')) {
+            document.getElementById('passport-suggestions')?.classList.add('hidden');
+          }
+        });
+
+        let visaEntries = [];
+
+        function addVisaEntry() {
+          const id = Date.now();
+          visaEntries.push({id, type: '', expiry: ''});
+          renderVisaList();
+        }
+
+        function removeVisaEntry(id) {
+          visaEntries = visaEntries.filter(v => v.id !== id);
+          renderVisaList();
+        }
+
+        function renderVisaList() {
+          const container = document.getElementById('visa-list');
+          if (!container) return;
+          container.innerHTML = visaEntries.map(v => `
+            <div class="flex items-center space-x-2" id="visa-row-${v.id}">
+              <input type="text" placeholder="Visa type (e.g. Schengen, US B1/B2)"
+                value="${v.type}"
+                onchange="visaEntries.find(x=>x.id===${v.id}).type=this.value"
+                class="flex-1 bg-transparent border-b border-neutral-800 text-white text-xs py-1 focus:border-orange-500 outline-none transition-colors placeholder-neutral-700">
+              <input type="month"
+                value="${v.expiry}"
+                onchange="visaEntries.find(x=>x.id===${v.id}).expiry=this.value"
+                class="bg-transparent border-b border-neutral-800 text-neutral-500 text-xs py-1 focus:border-orange-500 outline-none transition-colors w-28">
+              <button onclick="removeVisaEntry(${v.id})" class="text-neutral-700 hover:text-red-500 transition-colors text-xs">✕</button>
+            </div>
+          `).join('');
+        }
+
         function initApp() {
             const profile = lsGetProfile();
             const trips = lsGetTrips();
@@ -1074,6 +1154,14 @@
                 currentStep = 0;
                 document.getElementById('view-intro').classList.remove('hidden');
                 document.getElementById('view-location').classList.add('hidden');
+            }
+            // Restore passport/visa fields if profile exists
+            if (profile) {
+                if (profile.passport) document.getElementById('passport-input').value = profile.passport;
+                if (profile.visas && profile.visas.length) {
+                    visaEntries = profile.visas.map((v, i) => ({...v, id: Date.now() + i}));
+                    renderVisaList();
+                }
             }
         }
 
@@ -1313,6 +1401,11 @@
         btnNext1.addEventListener('click', () => {
             if(!homeSearch.value) return; 
             currentData.location = homeSearch.value;
+            currentData.passport = document.getElementById('passport-input').value.trim() || null;
+            currentData.visas = visaEntries.filter(v => v.type.trim()).map(v => ({
+              type: v.type.trim(),
+              expiry: v.expiry || null
+            }));
             if(isEditingMode) { saveAndReturn(); } else { updateView(2); }
         });
 
