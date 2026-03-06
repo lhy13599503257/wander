@@ -157,6 +157,7 @@ def generate_itinerary(profile, request_data):
     - Travel Vibe: {user_style} (chill=relaxed pace, rush=pack in as much as possible)
     - Shopping Interests: {user_tags}
     - Shopping Frequency: include shopping {shopping_freq_desc}
+    - Trip Vibe: {request_data.get('trip_vibe') or 'balanced / no specific vibe'}
     - Active Interests: {user_sports}
     - Dietary Restrictions: {', '.join(profile.get('diet', [])) or 'None'}
     - Transport Preference: {transport_pref}
@@ -242,7 +243,10 @@ def generate_itinerary(profile, request_data):
         - Note specific seasonal events: "This is cherry blossom season in Kyoto — Maruyama Park peaks around late March"
         - Avoid scheduling outdoor-heavy days during known rainy/extreme heat periods
 
-    16. TRANSPORT BUDGET IN CITY: Include a daily transport estimate activity at start of each city's days:
+    16. TRIP VIBE (critical — shapes the entire itinerary character):
+{f"       The user selected vibe: {request_data.get('trip_vibe', 'any')}. Let this vibe dominate activity selection. Every day should feel consistent with this theme. Don't mix in unrelated activities just to fill time — if it doesn't fit the vibe, cut it." if request_data.get('trip_vibe') else "       No specific vibe selected — create a balanced, well-rounded itinerary."}
+
+    17. TRANSPORT BUDGET IN CITY: Include a daily transport estimate activity at start of each city's days:
         - e.g., "🚇 Daily Transport Budget — Tokyo" with cost = realistic daily metro/bus spend
 
     OUTPUT JSON FORMAT (return ONLY valid JSON, nothing else):

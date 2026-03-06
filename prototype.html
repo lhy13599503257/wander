@@ -566,6 +566,27 @@
                     </div>
                 </div>
             </div>
+            <!-- Trip Vibe Selector -->
+            <div class="mt-6">
+                <p class="text-neutral-600 text-xs uppercase tracking-widest mb-3" id="vibe-label">Trip Vibe</p>
+                <div class="flex flex-wrap gap-2" id="vibe-container">
+                    <button onclick="selectVibe(this,'any')"       class="vibe-btn selected text-xs px-3 py-1.5 border border-orange-500 text-orange-500 rounded-full transition-colors" data-vibe="any">✨ Any</button>
+                    <button onclick="selectVibe(this,'culture')"   class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="culture">🏛️ 历史文化</button>
+                    <button onclick="selectVibe(this,'foodie')"    class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="foodie">🍜 美食探索</button>
+                    <button onclick="selectVibe(this,'nature')"    class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="nature">🏞️ 自然冒险</button>
+                    <button onclick="selectVibe(this,'sports')"    class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="sports">⚽ 运动旅行</button>
+                    <button onclick="selectVibe(this,'photo')"     class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="photo">📸 拍照打卡</button>
+                    <button onclick="selectVibe(this,'artsy')"     class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="artsy">🎨 文艺慢游</button>
+                    <button onclick="selectVibe(this,'nightlife')" class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="nightlife">🌙 夜生活</button>
+                    <button onclick="selectVibe(this,'wellness')"  class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="wellness">💆 放松疗愈</button>
+                    <button onclick="selectVibe(this,'shopping')"  class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="shopping">🛍️ 购物血拼</button>
+                    <button onclick="selectVibe(this,'romantic')"  class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="romantic">💑 情侣浪漫</button>
+                    <button onclick="selectVibe(this,'family')"    class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="family">👨‍👩‍👧 家庭出游</button>
+                    <button onclick="selectVibe(this,'backpacker')"class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="backpacker">🎒 穷游背包</button>
+                    <button onclick="selectVibe(this,'luxury')"    class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="luxury">💎 轻奢精品</button>
+                    <button onclick="selectVibe(this,'music')"     class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="music">🎵 音乐演出</button>
+                </div>
+            </div>
             <!-- Real Flights (Amadeus) -->
             <div id="flights-section" class="hidden">
                 <div class="flex justify-between items-center mb-3">
@@ -971,6 +992,7 @@
             safe(() => document.querySelector('#view-sports h1').innerHTML = t.sports_q);
             safe(() => document.querySelector('#view-shopping h1').innerHTML = t.shop_q);
             safe(() => { const el = document.getElementById('shopping-freq-label'); if(el) el.innerText = isCN ? '购物安排频率？' : 'How often to include shopping?'; });
+            safe(() => { const el = document.getElementById('vibe-label'); if(el) el.innerText = isCN ? '行程氛围' : 'Trip Vibe'; });
             safe(() => { const l=document.getElementById('sf-light'); if(l) l.innerText = isCN?'偶尔逛逛':'Occasionally'; });
             safe(() => { const m=document.getElementById('sf-medium'); if(m) m.innerText = isCN?'隔天安排':'Every other day'; });
             safe(() => { const h=document.getElementById('sf-heavy'); if(h) h.innerText = isCN?'购物为主':'Shopping focus'; });
@@ -1790,6 +1812,35 @@
             syncCityDays();
         }
 
+        let selectedVibe = 'any';
+        const VIBE_LABELS = {
+            any: 'Any style',
+            culture: 'History & Culture — prioritize museums, temples, monuments, guided historical tours',
+            foodie: 'Foodie First — center each day around must-eat meals, markets, food tours, local specialties',
+            nature: 'Nature & Adventure — hiking, national parks, scenic viewpoints, outdoor activities',
+            sports: 'Sports & Active — gyms, local sports venues, active activities, spectator sports events',
+            photo: 'Photography & Instagrammable — golden hour spots, aesthetic cafés, iconic backdrops, street art',
+            artsy: 'Artsy & Slow — indie galleries, bookshops, quiet neighborhoods, local creative scene',
+            nightlife: 'Nightlife — rooftop bars, clubs, night markets, late-night food scene',
+            wellness: 'Wellness & Relaxation — spas, hot springs, yoga, slow mornings, calming itinerary',
+            shopping: 'Shopping Spree — malls, local markets, boutiques, outlet stores, brand flagship stores',
+            romantic: 'Romantic Couple — intimate restaurants, sunset spots, couple activities, scenic walks',
+            family: 'Family Trip — kid-friendly attractions, theme parks, easy transport, early dinners',
+            backpacker: 'Budget Backpacker — hostels, free attractions, street food, local transport, authentic local life',
+            luxury: 'Luxury & Fine Dining — 5-star hotels, Michelin restaurants, private tours, premium experiences',
+            music: 'Music & Shows — live music venues, concerts, jazz bars, local music culture'
+        };
+
+        function selectVibe(btn, vibe) {
+            selectedVibe = vibe;
+            document.querySelectorAll('.vibe-btn').forEach(b => {
+                b.classList.remove('border-orange-500','text-orange-500','selected');
+                b.classList.add('border-neutral-800','text-neutral-500');
+            });
+            btn.classList.add('border-orange-500','text-orange-500','selected');
+            btn.classList.remove('border-neutral-800','text-neutral-500');
+        }
+
         function syncCityDays() {
             const mainDays = parseInt(document.getElementById('main-city-days')?.value) || 0;
             const extraDays = [...document.querySelectorAll('.city-days-input')]
@@ -1869,7 +1920,8 @@
                     group_size: groupSize,
                     confirmed_flight: selectedFlight || null,
                     visited_places: visitedPlaces.filter(v => !destList.includes(v)).slice(0, 20),
-                    city_days: getCityDaysMap()
+                    city_days: getCityDaysMap(),
+                    trip_vibe: selectedVibe !== 'any' ? selectedVibe : null
                 }
             };
 
