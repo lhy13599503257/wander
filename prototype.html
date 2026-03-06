@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WANDER | Urban Nomad</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0a0a0a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Wander">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -371,7 +376,7 @@
                     <label class="text-neutral-600 text-xs uppercase tracking-widest mb-2 block" id="dest-label">Destination</label>
                     <div class="flex items-end space-x-2">
                         <div class="flex-1 relative">
-                            <input type="text" id="trip-dest" placeholder="e.g. Tokyo, Paris, Xiamen" class="minimal-input" autocomplete="off">
+                            <input type="text" id="trip-dest" placeholder="e.g. Tokyo, Paris, Xiamen" class="minimal-input" autocomplete="off" onblur="fetchTripWeather()">
                             <div id="dest-suggestions" class="autocomplete-list hidden"></div>
                         </div>
                         <button onclick="addDestination()" class="text-orange-500 hover:text-white border border-orange-500/40 hover:border-orange-500 px-2 py-1 text-xs uppercase tracking-widest transition-colors mb-1 flex-shrink-0" id="add-city-btn" title="Add another city">+ City</button>
@@ -380,8 +385,30 @@
                     <div id="extra-dests" class="mt-2 space-y-2 hidden"></div>
                 </div>
 
+                <!-- WEATHER WIDGET -->
+                <div id="weather-widget" class="hidden border border-neutral-800 bg-neutral-900/50 rounded-xl p-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-neutral-600 text-[10px] uppercase tracking-widest mb-1" id="weather-city-label">Weather Forecast</p>
+                            <p class="text-white text-sm font-medium" id="weather-city-name">Loading...</p>
+                        </div>
+                        <span class="text-3xl" id="weather-icon">🌤️</span>
+                    </div>
+                    <div class="mt-3 flex items-center justify-between">
+                        <div>
+                            <span class="text-white text-2xl font-light" id="weather-temp">—</span>
+                            <span class="text-neutral-500 text-sm ml-1" id="weather-temp-range">—</span>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-neutral-500 text-[10px]" id="weather-precip">💧 —</p>
+                            <p class="text-neutral-500 text-[10px] mt-1" id="weather-dates">—</p>
+                        </div>
+                    </div>
+                    <div id="weather-warning" class="hidden mt-3 border border-orange-500/30 bg-orange-500/10 rounded-lg px-3 py-2 text-[11px] text-orange-400"></div>
+                </div>
+
                 <div class="grid grid-cols-2 gap-8">
-                    <div class="group"><label class="text-neutral-600 text-xs uppercase tracking-widest mb-2 block">Start Date</label><input type="text" placeholder="Select Date" class="minimal-input text-xl" onfocus="(this.type='date')" onblur="(this.type='text')" id="trip-date" style="font-size: 1.25rem;"></div>
+                    <div class="group"><label class="text-neutral-600 text-xs uppercase tracking-widest mb-2 block">Start Date</label><input type="text" placeholder="Select Date" class="minimal-input text-xl" onfocus="(this.type='date')" onblur="(this.type='text'); fetchTripWeather();" id="trip-date" style="font-size: 1.25rem;"></div>
                     <div class="group"><label class="text-neutral-600 text-xs uppercase tracking-widest mb-2 block">Duration (Days)</label><div class="flex items-center border-b border-neutral-800 py-2"><input type="number" value="7" min="1" max="30" class="bg-transparent text-white text-2xl w-full outline-none font-serif italic" id="trip-days"><span class="text-neutral-600 text-sm">DAYS</span></div></div>
                 </div>
                 <!-- Budget + Currency -->
@@ -524,6 +551,17 @@
         </div>
     </div>
 
+    <!-- JOURNAL MODAL -->
+    <div id="journal-modal" class="fixed inset-0 bg-black/90 backdrop-blur hidden items-center justify-center z-[61] overflow-y-auto">
+        <div class="bg-[#0a0a0a] border border-neutral-800 rounded-2xl p-8 mx-4 my-8 max-w-md w-full">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="font-serif italic text-2xl text-white">Travel Journal</h2>
+                <button onclick="closeJournal()" class="text-neutral-600 hover:text-white">✕</button>
+            </div>
+            <div id="journal-entries" class="space-y-3"></div>
+        </div>
+    </div>
+
     <!-- PRINT STYLES -->
     <style>
     @media print {
@@ -589,7 +627,10 @@
         <div class="max-w-md mx-auto">
             <div class="flex justify-between items-center mb-2">
                 <span class="text-[10px] text-neutral-600 uppercase tracking-widest">Live Budget</span>
-                <span class="text-[10px] text-neutral-600" id="budget-pct">0% spent</span>
+                <div class="flex items-center space-x-3">
+                    <button onclick="openJournal()" class="text-[10px] text-neutral-500 hover:text-white border border-neutral-800 hover:border-orange-500 px-2 py-0.5 rounded-full transition-colors">📔 Journal</button>
+                    <span class="text-[10px] text-neutral-600" id="budget-pct">0% spent</span>
+                </div>
             </div>
             <div class="w-full bg-neutral-900 h-0.5 rounded-full mb-2">
                 <div id="budget-progress" class="h-0.5 bg-orange-500 rounded-full transition-all duration-500" style="width:0%"></div>
@@ -1235,6 +1276,7 @@
             const newInput = wrap.querySelector('.extra-dest-input');
             const newSugg = wrap.querySelector('.extra-dest-suggestions');
             setupAutocomplete(newInput, newSugg);
+            newInput.addEventListener('blur', fetchTripWeather);
         }
 
         function getAllDestinations() {
@@ -1366,7 +1408,11 @@
                     document.getElementById('log-flight').innerHTML = `<span class="text-orange-500 font-bold">${data.flight.airline} ${data.flight.flight_num}</span> • ${data.flight.route} <br><span class="text-neutral-500">${data.flight.class} • ${data.flight.price}</span>`;
                 }
                 if(data.hotel) {
-                    document.getElementById('log-hotel').innerHTML = `<span class="text-white">${data.hotel.name}</span> (${data.hotel.rating}) <br><span class="text-neutral-500">${data.hotel.price_per_night}/night • Total: ${data.hotel.total_stay}</span>`;
+                    const checkinDate = data.summary?.date || '';
+                    const durationDays = data.summary?.duration || data.days?.length || 7;
+                    const bookingLinks = buildBookingLinks(data.hotel, data.destination, checkinDate, durationDays);
+                    const bookingUrl = `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(data.hotel.name || data.destination)}&checkin=${checkinDate}`;
+                    document.getElementById('log-hotel').innerHTML = `<a href="${bookingUrl}" target="_blank" class="text-white hover:text-orange-400 transition-colors">${data.hotel.name}</a> (${data.hotel.rating}) <br><span class="text-neutral-500">${data.hotel.price_per_night}/night • Total: ${data.hotel.total_stay}</span>${bookingLinks}`;
                 }
                 if(data.logistics && data.logistics.transport_tip) document.getElementById('log-transport').innerText = data.logistics.transport_tip;
                 if(data.budget_summary) document.getElementById('log-budget').innerText = `Flight: ${data.budget_summary.flight} | Stay: ${data.budget_summary.stay} | Total: ${data.budget_summary.total}`;
@@ -1708,6 +1754,20 @@
             const card = btn.closest('.activity-card');
             const isChecked = btn.classList.contains('checked');
             const cost = parseCostNum(costStr);
+
+            // Journal tracking
+            const journalEntries = JSON.parse(localStorage.getItem('wander_journal') || '[]');
+            const title = card.querySelector('h3')?.innerText || 'Activity';
+            const time = new Date().toLocaleString();
+            if (!isChecked) {
+                journalEntries.push({ title, time, trip: currentItineraryData?.destination || '?' });
+                localStorage.setItem('wander_journal', JSON.stringify(journalEntries));
+            } else {
+                const idx = journalEntries.findIndex(e => e.title === title);
+                if (idx > -1) journalEntries.splice(idx, 1);
+                localStorage.setItem('wander_journal', JSON.stringify(journalEntries));
+            }
+
             if (isChecked) {
                 btn.classList.remove('checked');
                 card.classList.remove('activity-done');
@@ -1859,6 +1919,164 @@
                     }
                 } catch(e) { console.warn('Failed to load shared trip:', e); }
             }
+        })();
+
+        // === WEATHER WIDGET ===
+        async function fetchTripWeather() {
+            const dest = document.getElementById('trip-dest').value.trim();
+            const dateVal = document.getElementById('trip-date').value;
+            const days = parseInt(document.getElementById('trip-days').value) || 7;
+            if (!dest || !dateVal) return;
+
+            const widget = document.getElementById('weather-widget');
+            widget.classList.remove('hidden');
+            document.getElementById('weather-city-name').innerText = currentLang === 'Chinese' ? '加载中...' : 'Loading...';
+
+            try {
+                const cityName = dest.split(',')[0].trim();
+                const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=en&format=json`, { signal: AbortSignal.timeout(5000) });
+                const geoData = await geoRes.json();
+                if (!geoData.results || !geoData.results.length) { widget.classList.add('hidden'); return; }
+
+                const { latitude: lat, longitude: lng, name, country } = geoData.results[0];
+                const startDate = new Date(dateVal);
+                const endDate = new Date(startDate);
+                endDate.setDate(startDate.getDate() + days - 1);
+                const fmt = d => d.toISOString().split('T')[0];
+
+                const forecastRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&timezone=auto&start_date=${fmt(startDate)}&end_date=${fmt(endDate)}`, { signal: AbortSignal.timeout(5000) });
+                const forecastData = await forecastRes.json();
+                if (!forecastData.daily) { widget.classList.add('hidden'); return; }
+
+                const { temperature_2m_max, temperature_2m_min, precipitation_sum, weathercode } = forecastData.daily;
+                const avgMax = temperature_2m_max.reduce((a, b) => a + b, 0) / temperature_2m_max.length;
+                const avgMin = temperature_2m_min.reduce((a, b) => a + b, 0) / temperature_2m_min.length;
+                const totalPrecip = precipitation_sum.reduce((a, b) => a + (b || 0), 0);
+
+                const codeCounts = {};
+                weathercode.forEach(c => { codeCounts[c] = (codeCounts[c] || 0) + 1; });
+                const dominantCode = parseInt(Object.keys(codeCounts).reduce((a, b) => codeCounts[a] > codeCounts[b] ? a : b));
+
+                function wmoToEmoji(code) {
+                    if (code === 0) return '☀️';
+                    if (code <= 3) return '🌤️';
+                    if (code <= 48) return '🌫️';
+                    if (code <= 67) return '🌧️';
+                    if (code <= 77) return '❄️';
+                    if (code <= 82) return '🌦️';
+                    if (code <= 99) return '⛈️';
+                    return '🌤️';
+                }
+
+                const isCN = currentLang === 'Chinese';
+                document.getElementById('weather-city-label').innerText = isCN ? '天气预报' : 'Weather Forecast';
+                document.getElementById('weather-city-name').innerText = `${name}, ${country}`;
+                document.getElementById('weather-icon').innerText = wmoToEmoji(dominantCode);
+                document.getElementById('weather-temp').innerText = `${avgMax.toFixed(0)}°C`;
+                document.getElementById('weather-temp-range').innerText = `${avgMin.toFixed(0)}° — ${avgMax.toFixed(0)}°`;
+                document.getElementById('weather-precip').innerText = `💧 ${totalPrecip.toFixed(0)}mm ${isCN ? '总降水' : 'precip'}`;
+                document.getElementById('weather-dates').innerText = `${fmt(startDate)} → ${fmt(endDate)}`;
+
+                const warning = document.getElementById('weather-warning');
+                warning.classList.add('hidden');
+                if (avgMax > 35) {
+                    warning.classList.remove('hidden');
+                    warning.innerText = isCN ? '⚠️ 极端高温（>35°C），注意防暑防晒！' : '⚠️ Peak heat (>35°C) — stay hydrated and use sunscreen!';
+                } else if (avgMin < 0) {
+                    warning.classList.remove('hidden');
+                    warning.innerText = isCN ? '⚠️ 气温低于冰点，请注意保暖！' : '⚠️ Freezing temperatures expected — pack warm layers!';
+                } else if (totalPrecip > 50) {
+                    warning.classList.remove('hidden');
+                    warning.innerText = isCN ? '🌧️ 雨季降水较多，建议携带雨具。' : '🌧️ High rainfall expected — pack a rain jacket!';
+                }
+            } catch(e) {
+                console.warn('Weather fetch failed:', e);
+                document.getElementById('weather-widget').classList.add('hidden');
+            }
+        }
+
+        // === TRIP JOURNAL ===
+        function openJournal() {
+            const modal = document.getElementById('journal-modal');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+
+            const entries = JSON.parse(localStorage.getItem('wander_journal') || '[]');
+            const container = document.getElementById('journal-entries');
+
+            if (entries.length === 0) {
+                container.innerHTML = '<p class="text-neutral-600 text-sm italic text-center py-8">No journal entries yet.<br>Check off activities to add them!</p>';
+                return;
+            }
+
+            // Group by trip
+            const grouped = {};
+            entries.forEach(e => {
+                if (!grouped[e.trip]) grouped[e.trip] = [];
+                grouped[e.trip].push(e);
+            });
+
+            container.innerHTML = Object.keys(grouped).map(trip => `
+                <div class="mb-6">
+                    <p class="text-orange-500 text-[10px] uppercase tracking-widest mb-3 font-bold">✈️ ${trip}</p>
+                    ${grouped[trip].map(e => `
+                        <div class="flex items-start space-x-3 py-2 border-b border-neutral-900">
+                            <span class="text-green-400 text-sm flex-shrink-0">✓</span>
+                            <div>
+                                <p class="text-white text-sm">${e.title}</p>
+                                <p class="text-neutral-600 text-[10px] mt-0.5">${e.time}</p>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+        }
+
+        function closeJournal() {
+            const modal = document.getElementById('journal-modal');
+            modal.classList.add('hidden');
+            modal.style.display = '';
+        }
+
+        // === HOTEL BOOKING LINKS (called from renderItinerary) ===
+        function buildBookingLinks(hotel, destination, startDate, durationDays) {
+            if (!hotel) return '';
+            const hotelName = hotel.name || destination;
+            const checkin = startDate || '';
+            let checkout = '';
+            if (checkin) {
+                const d = new Date(checkin);
+                d.setDate(d.getDate() + parseInt(durationDays || 7));
+                checkout = d.toISOString().split('T')[0];
+            }
+            const city = (destination || '').split(',')[0].trim();
+            const bookingUrl = `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(hotelName)}&checkin=${checkin}&checkout=${checkout}`;
+            const airbnbUrl = `https://www.airbnb.com/s/${encodeURIComponent(city)}/homes?checkin=${checkin}&checkout=${checkout}`;
+            return `
+                <div class="flex space-x-2 mt-2">
+                    <a href="${bookingUrl}" target="_blank" class="text-[10px] text-white bg-blue-700 hover:bg-blue-600 px-3 py-1.5 rounded-full transition-colors flex-shrink-0">🏨 Booking.com</a>
+                    <a href="${airbnbUrl}" target="_blank" class="text-[10px] text-white bg-pink-700 hover:bg-pink-600 px-3 py-1.5 rounded-full transition-colors flex-shrink-0">🏠 Airbnb</a>
+                </div>
+            `;
+        }
+
+        // === PWA: Service Worker Registration ===
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(reg => {
+                    console.log('✅ SW registered');
+                }).catch(e => console.warn('SW failed:', e));
+            });
+        }
+
+        // === PWA: Add to Home Screen Prompt (once per device, after 30s) ===
+        (function pwaPrompt() {
+            if (localStorage.getItem('wander_pwa_prompted')) return;
+            setTimeout(() => {
+                if (localStorage.getItem('wander_pwa_prompted')) return;
+                localStorage.setItem('wander_pwa_prompted', '1');
+                showToast('📱 Add Wander to your home screen for quick access!');
+            }, 30000);
         })();
     </script>
 </body>

@@ -77,6 +77,16 @@ def city_to_iata(city_name):
 def index():
     return send_from_directory(DIRECTORY, 'prototype.html')
 
+@app.route('/manifest.json')
+def manifest():
+    return send_from_directory(DIRECTORY, 'manifest.json')
+
+@app.route('/sw.js')
+def service_worker():
+    from flask import Response
+    sw_content = open(os.path.join(DIRECTORY, 'sw.js')).read()
+    return Response(sw_content, mimetype='application/javascript')
+
 @app.route('/<path:filename>')
 def static_files(filename):
     return send_from_directory(DIRECTORY, filename)
