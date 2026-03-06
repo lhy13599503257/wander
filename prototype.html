@@ -469,6 +469,11 @@
                             <input type="text" id="trip-dest" placeholder="e.g. Tokyo, Paris, Xiamen" class="minimal-input" autocomplete="off" onblur="fetchTripWeather(); showNearbySuggestions(this.value)">
                             <div id="dest-suggestions" class="autocomplete-list hidden"></div>
                         </div>
+                        <!-- Per-city days (shown in multi-city mode) -->
+                        <div id="main-city-days-wrap" class="hidden flex items-center border-b border-neutral-700 px-2 py-1">
+                            <input type="number" id="main-city-days" min="1" max="20" value="3" class="bg-transparent text-orange-500 text-sm w-8 outline-none text-center font-serif" oninput="syncCityDays()">
+                            <span class="text-neutral-600 text-[10px] ml-0.5">d</span>
+                        </div>
                         <button onclick="addDestination()" class="text-orange-500 hover:text-white border border-orange-500/40 hover:border-orange-500 px-2 py-1 text-xs uppercase tracking-widest transition-colors mb-1 flex-shrink-0" id="add-city-btn" title="Add another city">+ City</button>
                     </div>
                     <!-- Nearby city suggestions -->
@@ -1731,6 +1736,8 @@
         function addDestination() {
             const container = document.getElementById('extra-dests');
             container.classList.remove('hidden');
+            // Show per-city days on main city too
+            document.getElementById('main-city-days-wrap').classList.remove('hidden');
             const idx = container.children.length + 2;
             const wrap = document.createElement('div');
             wrap.className = 'relative flex items-center space-x-2';
@@ -1739,13 +1746,46 @@
                     <input type="text" placeholder="City ${idx}" class="minimal-input extra-dest-input text-lg" autocomplete="off">
                     <div class="autocomplete-list hidden extra-dest-suggestions"></div>
                 </div>
-                <button onclick="this.parentElement.remove(); if(!document.getElementById('extra-dests').children.length) document.getElementById('extra-dests').classList.add('hidden');" class="text-neutral-600 hover:text-red-400 text-xs px-2">✕</button>`;
+                <div class="flex items-center border-b border-neutral-700 px-2 py-1">
+                    <input type="number" min="1" max="20" value="3" class="bg-transparent text-orange-500 text-sm w-8 outline-none text-center font-serif city-days-input" oninput="syncCityDays()">
+                    <span class="text-neutral-600 text-[10px] ml-0.5">d</span>
+                </div>
+                <button onclick="this.parentElement.remove(); if(!document.getElementById('extra-dests').children.length){document.getElementById('extra-dests').classList.add('hidden');document.getElementById('main-city-days-wrap').classList.add('hidden');} syncCityDays();" class="text-neutral-600 hover:text-red-400 text-xs px-2">✕</button>`;
             container.appendChild(wrap);
-            // Wire up autocomplete for this new input
             const newInput = wrap.querySelector('.extra-dest-input');
             const newSugg = wrap.querySelector('.extra-dest-suggestions');
             setupAutocomplete(newInput, newSugg);
             newInput.addEventListener('blur', fetchTripWeather);
+            syncCityDays();
+        }
+
+        function syncCityDays() {
+            const mainDays = parseInt(document.getElementById('main-city-days')?.value) || 0;
+            const extraDays = [...document.querySelectorAll('.city-days-input')]
+                .reduce((sum, el) => sum + (parseInt(el.value) || 0), 0);
+            const total = mainDays + extraDays;
+            if (total > 0) {
+                document.getElementById('trip-days').value = total;
+            }
+        }
+
+        function getCityDaysMap() {
+            // Returns [{city, days}] for multi-city, or null for single city
+            const extra = document.getElementById('extra-dests');
+            if (!extra || extra.classList.contains('hidden')) return null;
+            const mainCity = document.getElementById('trip-dest').value.trim();
+            const mainDays = parseInt(document.getElementById('main-city-days')?.value) || null;
+            if (!mainCity || !mainDays) return null;
+            const result = [{city: mainCity, days: mainDays}];
+            const extraRows = extra.querySelectorAll('.relative.flex');
+            extraRows.forEach(row => {
+                const cityInput = row.querySelector('.extra-dest-input');
+                const daysInput = row.querySelector('.city-days-input');
+                const city = cityInput?.value.trim();
+                const days = parseInt(daysInput?.value) || 0;
+                if (city && days) result.push({city, days});
+            });
+            return result.length > 1 ? result : null;
         }
 
         function getAllDestinations() {
@@ -1797,7 +1837,8 @@
                     language: currentLang,
                     group_size: groupSize,
                     confirmed_flight: selectedFlight || null,
-                    visited_places: visitedPlaces.filter(v => !destList.includes(v)).slice(0, 20)
+                    visited_places: visitedPlaces.filter(v => !destList.includes(v)).slice(0, 20),
+                    city_days: getCityDaysMap()
                 }
             };
 

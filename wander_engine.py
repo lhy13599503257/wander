@@ -165,6 +165,7 @@ def generate_itinerary(profile, request_data):
 
     TRIP REQUEST:
     - Destination: {dest}{'  ← MULTI-CITY ROUTE: plan each city segment in order, include inter-city transit day(s)' if '→' in dest else ''}
+{('    - Days per City (STRICT — follow exactly): ' + ', '.join(f"{c['city']}: {c['days']} day{'s' if c['days']>1 else ''}" for c in request_data.get('city_days') or []) ) if request_data.get('city_days') else ''}
     - Duration: {days_count} Days
     - Group: {group_desc}
     - Budget: {budget_note} (all costs shown as PER PERSON)
