@@ -2440,11 +2440,14 @@
         };
 
         function loadDemo() {
-          // Ensure currentStep points to intro so updateView hides it correctly
-          currentStep = 0;
-          renderItinerary(DEMO_TRIP);
-          updateView(10);
-          setTimeout(() => showToast('✨ Demo mode — generate your own trip anytime!'), 1000);
+          try {
+            currentStep = 0;
+            renderItinerary(DEMO_TRIP);
+            updateView(10);
+            setTimeout(() => showToast('✨ Demo mode — generate your own trip anytime!'), 1000);
+          } catch(e) {
+            alert('Demo error: ' + e.message + '\n' + e.stack);
+          }
         }
 
         // === LOADING ANIMATION ===
