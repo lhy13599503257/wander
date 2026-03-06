@@ -1525,7 +1525,8 @@
                     return;
                 }
                 if (!data.flights || data.flights.length === 0) {
-                    result.innerHTML = '<div class="text-neutral-600 text-xs">No flights found for this route/date.</div>';
+                    const hint = data.hint || `No flights found for ${data.origin||'?'}→${data.dest||'?'}. Try a future date within 1 year.`;
+                    result.innerHTML = `<div class="text-neutral-500 text-xs">${hint}</div>`;
                     return;
                 }
                 result.innerHTML = data.flights.map(f => `

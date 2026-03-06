@@ -66,9 +66,25 @@ def get_amadeus_token():
         print(f'⚠️  Amadeus token error: {e}')
         return None
 
-def city_to_iata(city_name):
+def city_to_iata(city_name, token=None):
     clean = city_name.lower().split(',')[0].strip()
-    return CITY_IATA.get(clean, clean[:3].upper())
+    # 1. Try static lookup first
+    if clean in CITY_IATA:
+        return CITY_IATA[clean]
+    # 2. Try Amadeus location search API
+    if token:
+        try:
+            r = req_lib.get(f'{AMADEUS_BASE}/v1/reference-data/locations',
+                headers={'Authorization': f'Bearer {token}'},
+                params={'keyword': clean, 'subType': 'CITY,AIRPORT', 'page[limit]': 1},
+                timeout=5)
+            data = r.json()
+            if data.get('data'):
+                return data['data'][0]['iataCode']
+        except Exception as e:
+            print(f'⚠️ IATA lookup failed for {city_name}: {e}')
+    # 3. Fallback: first 3 letters uppercased
+    return clean[:3].upper()
 
 # ==========================================
 # 🌐 ROUTES
@@ -111,8 +127,8 @@ def api_flights():
     if not token:
         return jsonify({"error": "Amadeus not configured", "hint": "Add AMADEUS_CLIENT_ID and AMADEUS_CLIENT_SECRET env vars"}), 503
 
-    origin_iata = city_to_iata(origin_city)
-    dest_iata   = city_to_iata(dest_city)
+    origin_iata = city_to_iata(origin_city, token)
+    dest_iata   = city_to_iata(dest_city, token)
     print(f"✈️  Flight search: {origin_iata} → {dest_iata} on {date}")
 
     try:
@@ -147,6 +163,9 @@ def api_flights():
                 'price': f"${price}",
                 'class': offer['travelerPricings'][0]['fareDetailsBySegment'][0].get('cabin','ECONOMY').title(),
             })
+        if not flights:
+            return jsonify({"flights": [], "origin": origin_iata, "dest": dest_iata,
+                            "hint": f"No flights found for {origin_iata}→{dest_iata} on {date}. Try a different date (must be future, within 1 year)."}), 200
         return jsonify({"flights": flights, "origin": origin_iata, "dest": dest_iata})
 
     except Exception as e:
