@@ -2440,9 +2440,11 @@
         };
 
         function loadDemo() {
+          // Ensure currentStep points to intro so updateView hides it correctly
+          currentStep = 0;
           renderItinerary(DEMO_TRIP);
           updateView(10);
-          setTimeout(() => showToast('\u2728 Demo mode \u2014 generate your own trip anytime!'), 1000);
+          setTimeout(() => showToast('✨ Demo mode — generate your own trip anytime!'), 1000);
         }
 
         // === LOADING ANIMATION ===
