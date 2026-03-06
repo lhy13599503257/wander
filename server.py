@@ -20,8 +20,23 @@ DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wander_trips
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute('CREATE TABLE IF NOT EXISTS trips (id TEXT PRIMARY KEY, data TEXT, created_at INTEGER)')
+    conn.execute('CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, status TEXT, data TEXT, error TEXT, created_at INTEGER)')
     conn.commit()
     conn.close()
+
+def save_job_db(job_id, status, data=None, error=None):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute('INSERT OR REPLACE INTO jobs VALUES (?, ?, ?, ?, ?)',
+                 (job_id, status, json.dumps(data) if data else None, error, int(time_module.time())))
+    conn.commit()
+    conn.close()
+
+def get_job_db(job_id):
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute('SELECT status, data, error FROM jobs WHERE id = ?', (job_id,)).fetchone()
+    conn.close()
+    if not row: return None
+    return {'status': row[0], 'data': json.loads(row[1]) if row[1] else None, 'error': row[2]}
 
 def save_trip_db(trip_id, data):
     conn = sqlite3.connect(DB_PATH)
@@ -222,11 +237,10 @@ def api_flights():
         print(f'❌ Amadeus search error: {e}')
         return jsonify({"error": str(e)}), 500
 
-# In-memory async job store
+# In-memory cache (fast access) + SQLite persistence (survives restarts)
 _jobs = {}
 
 def _cleanup_jobs():
-    """Remove jobs older than 15 minutes"""
     cutoff = time_module.time() - 900
     old = [k for k, v in _jobs.items() if v.get('created', 0) < cutoff]
     for k in old:
@@ -241,6 +255,7 @@ def plan_trip():
     req_data = request.json
     job_id = secrets.token_urlsafe(5)[:8]
     _jobs[job_id] = {'status': 'pending', 'created': time_module.time()}
+    save_job_db(job_id, 'pending')
     _cleanup_jobs()
 
     def run_job():
@@ -249,7 +264,6 @@ def plan_trip():
             req = req_data.get('request', {})
             print(f"🧠 Generating trip → {req.get('destination', '?')}, {req.get('duration', '?')} days")
             result = wander_engine.generate_itinerary(profile, req)
-            # Attach metadata
             result['id'] = int(time.time())
             result['created_at'] = time.strftime("%Y-%m-%d %H:%M")
             result['summary'] = {
@@ -258,11 +272,13 @@ def plan_trip():
                 "duration": req.get('duration')
             }
             print(f"✅ Trip generated (id={result['id']})")
-            _jobs[job_id]['status'] = 'done'
-            _jobs[job_id]['data'] = result
+            _jobs[job_id] = {'status': 'done', 'data': result, 'created': _jobs.get(job_id, {}).get('created', 0)}
+            save_job_db(job_id, 'done', data=result)
         except Exception as e:
+            print(f"❌ Job {job_id} failed: {e}")
             _jobs[job_id]['status'] = 'error'
             _jobs[job_id]['error'] = str(e)
+            save_job_db(job_id, 'error', error=str(e))
 
     t = threading.Thread(target=run_job, daemon=True)
     t.start()
@@ -270,13 +286,14 @@ def plan_trip():
 
 @app.route('/api/plan-status/<job_id>', methods=['GET'])
 def plan_status(job_id):
+    # Check in-memory cache first (fast), fall back to SQLite (survives restarts)
     job = _jobs.get(job_id)
     if not job:
+        job = get_job_db(job_id)
+        if job:
+            _jobs[job_id] = {**job, 'created': time_module.time()}  # restore to cache
+    if not job:
         return jsonify({'status': 'not_found'}), 404
-    if time_module.time() - job.get('created', 0) > 900:
-        _jobs.pop(job_id, None)
-        return jsonify({'status': 'expired'}), 404
-    # Return only status + data when done (omit 'created' from response)
     resp = {'status': job['status']}
     if job['status'] == 'done':
         resp['data'] = job['data']

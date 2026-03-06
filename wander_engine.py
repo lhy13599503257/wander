@@ -8,7 +8,7 @@ import urllib.error
 # ==========================================
 import os as _os
 API_KEY = _os.environ.get('GEMINI_API_KEY', '')
-MODEL_NAME = "gemini-2.5-flash"
+MODEL_NAME = "gemini-2.0-flash"  # Faster than 2.5-flash; no thinking overhead
 
 def call_gemini(prompt):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}:generateContent?key={API_KEY}"
@@ -16,13 +16,12 @@ def call_gemini(prompt):
     data = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
-            "response_mime_type": "application/json",
-            "thinkingConfig": {"thinkingBudget": 0}  # Disable thinking = 5x faster, avoids Railway 60s timeout
+            "response_mime_type": "application/json"
         }
     }
     try:
         req = urllib.request.Request(url, data=json.dumps(data).encode('utf-8'), headers=headers)
-        with urllib.request.urlopen(req, timeout=100) as response:
+        with urllib.request.urlopen(req, timeout=120) as response:
             result = json.loads(response.read().decode('utf-8'))
             return result['candidates'][0]['content']['parts'][0]['text']
     except urllib.error.HTTPError as e:
@@ -125,6 +124,7 @@ def generate_itinerary(profile, request_data):
     budget = request_data.get('budget', '5000')
     language = request_data.get('language', 'English')
     currency = request_data.get('currency', 'USD')
+    is_long_trip = int(days_count) > 6  # Optimize prompt for long trips
     
     print(f"🧠 Engine Thinking... Target: {dest}, {days_count} Days, Budget: {currency}{budget}, Lang: {language}")
 
@@ -203,6 +203,7 @@ def generate_itinerary(profile, request_data):
        - Leave buffer time after heavy meals
        - If user is "chill" style: max 4-5 activities/day, include 1 "rest" slot
        - If user is "rush" style: 6-8 activities/day, optimized by geography
+       - {"For trips over 6 days: keep each day to 3-4 activities max to maintain quality and speed." if is_long_trip else ""}
 
     9. COORDINATES: Provide accurate lat/lng (decimal degrees) for EVERY activity.
 
