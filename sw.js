@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wander-v2';
+const CACHE_NAME = 'wander-v202603060344';
 const URLS_TO_CACHE = ['/'];
 
 self.addEventListener('install', event => {
