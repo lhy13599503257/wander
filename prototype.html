@@ -1207,6 +1207,8 @@
             const profile = lsGetProfile();
             const trips = lsGetTrips();
             if (profile && profile.location) {
+                // Hide intro for returning users
+                document.getElementById('view-intro').classList.add('hidden');
                 currentData = profile;
                 savedTrips = trips;
                 renderSavedTrips(trips);
