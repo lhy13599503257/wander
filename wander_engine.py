@@ -8,7 +8,7 @@ import urllib.error
 # ==========================================
 import os as _os
 API_KEY = _os.environ.get('GEMINI_API_KEY', '')
-MODEL_NAME = "gemini-2.0-flash"  # Faster than 2.5-flash; no thinking overhead
+MODEL_NAME = "gemini-2.5-flash-lite"  # Faster than 2.5-flash, no thinking mode
 
 def call_gemini(prompt):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}:generateContent?key={API_KEY}"
