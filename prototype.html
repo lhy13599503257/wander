@@ -334,6 +334,9 @@
             <p class="text-neutral-500 text-sm font-light">Start typing to search global cities.</p>
             <div class="space-y-4">
                 <div class="relative group">
+                    <input type="text" id="user-name-input" placeholder="Your first name (optional)" class="minimal-input" autocomplete="off" id="user-name-input">
+                </div>
+                <div class="relative group">
                     <input type="text" id="home-search" placeholder="e.g. London, Toronto, Shanghai" class="minimal-input" autocomplete="off">
                     <div id="home-suggestions" class="autocomplete-list hidden"></div>
                 </div>
@@ -455,7 +458,7 @@
             <button onclick="toggleProfileModal()" class="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-xs text-orange-500 hover:bg-neutral-700 hover:text-white transition-colors">HY</button>
         </div>
         <div class="flex flex-col justify-center min-h-screen max-w-md mx-auto px-6 space-y-12">
-            <div class="space-y-2"><p class="text-orange-500 text-xs uppercase tracking-widest">Ready for next adventure?</p><h1 class="text-3xl text-white font-light">Where to next, <br> <span class="font-serif italic">Haoyang?</span></h1></div>
+            <div class="space-y-2"><p class="text-orange-500 text-xs uppercase tracking-widest" id="dashboard-subtitle">Ready for next adventure?</p><h1 class="text-3xl text-white font-light" id="dashboard-greeting">Where to next, <br> <span class="font-serif italic">Traveler?</span></h1></div>
             <div class="space-y-8">
                 <!-- DESTINATION INPUT -->
                 <div class="group relative">
@@ -841,7 +844,7 @@
                 'confirm_flight': 'Confirm Priority',
                 'confirm_sports': 'Confirm Activities',
                 'ready': 'Ready for next adventure?',
-                'where_next': 'Where to next, <br> <span class="font-serif italic">Haoyang?</span>',
+                'where_next': null, // dynamic — set by updateDashboardGreeting()
                 'dest_label': 'Destination',
                 'start_label': 'Start Date',
                 'dur_label': 'Duration (Days)',
@@ -875,7 +878,7 @@
                 'confirm_flight': '确认偏好',
                 'confirm_sports': '确认运动',
                 'ready': '准备好出发了吗？',
-                'where_next': '下一站去哪， <br> <span class="font-serif italic">老板？</span>',
+                'where_next': null, // dynamic — set by updateDashboardGreeting()
                 'dest_label': '目的地',
                 'start_label': '出发日期',
                 'dur_label': '天数',
@@ -943,7 +946,7 @@
 
             // Dashboard
             safe(() => document.querySelector('#view-dashboard p').innerText = t.ready);
-            safe(() => document.querySelector('#view-dashboard h1').innerHTML = t.where_next);
+            updateDashboardGreeting();
             safe(() => document.getElementById('btn-create-itinerary').innerText = t.create_btn);
             safe(() => document.querySelector('#recent-trips-section p').innerText = t.saved_trips);
             // Dashboard labels
@@ -1176,6 +1179,7 @@
             }
             // Restore passport/visa fields if profile exists
             if (profile) {
+                if (profile.name) document.getElementById('user-name-input').value = profile.name;
                 if (profile.passport) document.getElementById('passport-input').value = profile.passport;
                 if (profile.visas && profile.visas.length) {
                     visaEntries = profile.visas.map((v, i) => ({...v, id: Date.now() + i}));
@@ -1185,6 +1189,18 @@
         }
 
         // === DATA POPULATION ===
+        function updateDashboardGreeting() {
+            const name = currentData?.name || currentData?.nickname || '';
+            const isCN = currentLang === 'Chinese';
+            const nameStr = name ? `<span class="font-serif italic">${name}?</span>` : `<span class="font-serif italic">${isCN ? '旅行家？' : 'Traveler?'}</span>`;
+            const greeting = isCN ? `下一站去哪，<br>${nameStr}` : `Where to next,<br>${nameStr}`;
+            const subtitle = isCN ? '出发前的准备' : 'Ready for next adventure?';
+            const el = document.getElementById('dashboard-greeting');
+            const sub = document.getElementById('dashboard-subtitle');
+            if (el) el.innerHTML = greeting;
+            if (sub) sub.innerText = subtitle;
+        }
+
         function populateSports() {
             const container = document.getElementById('sports-container');
             if (!container) return;
@@ -1395,6 +1411,7 @@
                 newView.classList.remove('hidden');
                 currentStep = newStep;
                 if (newStep === 9.5) startLoadingAnimation();
+                if (newStep === 9) updateDashboardGreeting();
             }, 500);
         }
 
@@ -1418,7 +1435,8 @@
         function goBack() { if (currentStep > 1) updateView(currentStep - 1); }
 
         btnNext1.addEventListener('click', () => {
-            if(!homeSearch.value) return; 
+            if(!homeSearch.value) return;
+            currentData.name = document.getElementById('user-name-input').value.trim() || null;
             currentData.location = homeSearch.value;
             currentData.passport = document.getElementById('passport-input').value.trim() || null;
             currentData.visas = visaEntries.filter(v => v.type.trim()).map(v => ({
