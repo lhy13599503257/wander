@@ -1766,7 +1766,14 @@
             
             document.getElementById('loading-city').innerText = dest;
             document.getElementById('loading-title').innerText = currentLang === 'Chinese' ? 'AI 思考中...' : 'Planning your trip';
-            updateView(9.5); 
+            updateView(9.5);
+            // Reassure user if it takes >45s
+            const slowTimer = setTimeout(() => {
+                const titleEl = document.getElementById('loading-title');
+                if (titleEl && titleEl.innerText !== (currentLang === 'Chinese' ? '网络连接中断 😔' : 'Connection Lost 😔')) {
+                    titleEl.innerText = currentLang === 'Chinese' ? '正在深度规划，稍等一下...' : 'Deep planning in progress, hang tight...';
+                }
+            }, 45000);
 
             // Pass language + currency to backend
             const currencySel = document.getElementById('trip-currency');
@@ -1795,11 +1802,16 @@
             };
 
             try {
+                const abortCtrl = new AbortController();
+                const abortTimer = setTimeout(() => abortCtrl.abort(), 150000); // 150s max
                 const response = await fetch('/api/plan', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(payload),
+                    signal: abortCtrl.signal
                 });
+                clearTimeout(abortTimer);
+                clearTimeout(slowTimer);
                 const data = await response.json();
                 if (data.error) {
                     alert("AI Error: " + data.error);
@@ -2972,8 +2984,8 @@
 
         // === LOADING ANIMATION ===
         const LOADING_MSGS = {
-          English: ["Consulting local experts...", "Finding hidden gems...", "Checking restaurant reservations...", "Calculating optimal routes...", "Curating your perfect day...", "Almost there..."],
-          Chinese: ["\u548b\u8baf\u5f53\u5730\u8fbe\u4eba...", "\u6316\u6398\u9690\u85cf\u5b9d\u85cf...", "\u6838\u67e5\u9910\u5385\u9884\u8ba2...", "\u89c4\u5212\u6700\u4f18\u8def\u7ebf...", "\u7cbe\u5fc3\u5b89\u6392\u6bcf\u4e00\u5929...", "\u5feb\u597d\u4e86..."]
+          English: ["Consulting local experts...", "Finding hidden gems...", "Checking restaurant reservations...", "Calculating optimal routes...", "Curating your perfect day...", "Researching seasonal events...", "Sourcing the best local eats...", "Double-checking opening hours...", "This one's worth the wait ✨", "Almost there..."],
+          Chinese: ["咨询当地达人...", "挖掘隐藏宝藏...", "核查餐厅预订...", "规划最优路线...", "精心安排每一天...", "查询当季活动...", "寻找最佳本地美食...", "确认营业时间...", "值得等待的行程 ✨", "快好了..."]
         };
         let _loadingTimer = null;
         function startLoadingAnimation() {
