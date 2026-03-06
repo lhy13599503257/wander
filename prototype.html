@@ -1315,44 +1315,46 @@
                 }
             };
 
-            const attemptGenerate = async (attempt) => {
-                const ctrl = new AbortController();
-                const timer = setTimeout(() => ctrl.abort(), 58000); // 58s client timeout
-                try {
-                    const response = await fetch('/api/plan', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload),
-                        signal: ctrl.signal
-                    });
-                    clearTimeout(timer);
-                    const data = await response.json();
-                    if (data.error) {
-                        alert("AI Error: " + data.error);
-                        updateView(9);
-                        return;
-                    }
-                    renderItinerary(data);
-                    savedTrips.unshift(data);
-                    lsSaveTrips(savedTrips);
-                    renderSavedTrips(savedTrips);
-                    setTimeout(() => { updateView(10); }, 1000);
-                } catch (err) {
-                    clearTimeout(timer);
-                    console.warn(`Attempt ${attempt} failed:`, err.message);
-                    if (attempt < 2) {
-                        // Auto retry once
-                        const retryMsg = currentLang === 'Chinese' ? '网络有点慢，正在重试...' : 'Slow connection, retrying...';
-                        document.querySelector('#view-loading h1').innerText = retryMsg;
-                        await new Promise(r => setTimeout(r, 2000));
-                        document.querySelector('#view-loading h1').innerText = currentLang === 'Chinese' ? 'AI 思考中...' : 'Wander AI is thinking...';
-                        return attemptGenerate(attempt + 1);
-                    }
-                    alert(currentLang === 'Chinese' ? "生成失败，请检查网络后重试 🙏" : "Generation failed, please check your connection 🙏");
+            try {
+                const response = await fetch('/api/plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (data.error) {
+                    alert("AI Error: " + data.error);
                     updateView(9);
+                    return;
                 }
-            };
-            await attemptGenerate(1);
+                renderItinerary(data);
+                savedTrips.unshift(data);
+                lsSaveTrips(savedTrips);
+                renderSavedTrips(savedTrips);
+                setTimeout(() => { updateView(10); }, 1000);
+            } catch (err) {
+                console.warn('Generation failed:', err.message);
+                // Show retry screen instead of alert
+                const isCN = currentLang === 'Chinese';
+                updateView(9.5);
+                document.getElementById('loading-city').innerText = dest;
+                document.querySelector('#view-loading h1').innerText = isCN ? '网络连接中断 😔' : 'Connection Lost 😔';
+                // Add retry button
+                const existing = document.getElementById('retry-btn');
+                if (existing) existing.remove();
+                const btn = document.createElement('button');
+                btn.id = 'retry-btn';
+                btn.innerText = isCN ? '重新生成' : 'Try Again';
+                btn.className = 'mt-8 px-8 py-4 bg-white text-black uppercase text-sm tracking-widest font-bold hover:bg-orange-500 hover:text-white transition-all';
+                btn.onclick = () => { btn.remove(); startPlanning(); };
+                const cancelBtn = document.createElement('button');
+                cancelBtn.innerText = isCN ? '返回' : 'Go Back';
+                cancelBtn.className = 'mt-3 px-8 py-3 text-neutral-500 hover:text-white uppercase text-xs tracking-widest transition-colors';
+                cancelBtn.onclick = () => { btn.remove(); cancelBtn.remove(); updateView(9); document.querySelector('#view-loading h1').innerText = isCN ? 'AI 思考中...' : 'Wander AI is thinking...'; };
+                const loadingView = document.getElementById('view-loading');
+                loadingView.appendChild(btn);
+                loadingView.appendChild(cancelBtn);
+            }
         }
 
         // City → beautiful gradient fallback (works everywhere including China)
