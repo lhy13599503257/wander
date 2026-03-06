@@ -9,6 +9,16 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Wander">
+    <!-- OG Social Preview Tags -->
+    <meta property="og:title" content="Wander — AI Travel Planner">
+    <meta property="og:description" content="Your personal AI travel concierge. Generates luxury itineraries in seconds.">
+    <meta property="og:image" content="https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1200&h=630&fit=crop">
+    <meta property="og:url" content="https://web-production-3d2fe.up.railway.app">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Wander — AI Travel Planner">
+    <meta name="twitter:description" content="Your personal AI travel concierge. Generates luxury itineraries in seconds.">
+    <meta name="twitter:image" content="https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1200&h=630&fit=crop">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -287,6 +297,9 @@
             </div>
         </div>
         <button id="btn-next-1" class="glass-card w-full py-4 mt-8 uppercase text-xs tracking-widest text-neutral-400 hover:text-white">Confirm Location</button>
+        <button onclick="loadDemo()" class="mt-3 w-full py-4 text-neutral-500 hover:text-white border border-neutral-800 hover:border-neutral-600 uppercase text-xs tracking-widest transition-colors">
+          ✨ See Example Itinerary First
+        </button>
     </div>
 
     <!-- VIEW 2: TRAVEL STYLE -->
@@ -488,8 +501,30 @@
 
     <!-- VIEW 9.5: LOADING -->
     <div id="view-loading" class="hidden w-full min-h-screen flex flex-col items-center justify-center fade-in bg-black z-50 fixed inset-0">
-        <h1 class="serif text-4xl italic text-white animate-pulse">Wander AI is thinking...</h1>
-        <p class="text-neutral-500 mt-4 text-xs tracking-widest uppercase">Matching <span id="loading-city">City</span> with your Vibe</p>
+        <div class="flex flex-col items-center justify-center h-full space-y-8 px-8">
+          <!-- Animated logo -->
+          <div class="relative">
+            <div class="w-20 h-20 rounded-full border border-orange-500/30 animate-ping absolute inset-0"></div>
+            <div class="w-20 h-20 rounded-full border border-orange-500/60 animate-pulse flex items-center justify-center">
+              <span class="text-3xl">✈</span>
+            </div>
+          </div>
+          <!-- City name -->
+          <div class="text-center">
+            <h1 class="text-4xl font-serif italic text-white mb-2" id="loading-title">Planning your trip</h1>
+            <p class="text-orange-500 uppercase tracking-widest text-xs" id="loading-city">...</p>
+          </div>
+          <!-- Cycling messages -->
+          <div class="text-center">
+            <p class="text-neutral-500 text-sm transition-opacity duration-300" id="loading-msg">Consulting local experts...</p>
+          </div>
+          <!-- Animated progress dots -->
+          <div class="flex space-x-2">
+            <div class="w-2 h-2 bg-orange-500 rounded-full animate-bounce" style="animation-delay:0s"></div>
+            <div class="w-2 h-2 bg-orange-500 rounded-full animate-bounce" style="animation-delay:0.2s"></div>
+            <div class="w-2 h-2 bg-orange-500 rounded-full animate-bounce" style="animation-delay:0.4s"></div>
+          </div>
+        </div>
     </div>
 
     <!-- VIEW 10: ITINERARY -->
@@ -503,6 +538,9 @@
         <!-- Header -->
         <div class="relative z-10 px-6 pt-20 pb-8">
             <button onclick="closeItinerary()" class="absolute top-6 left-6 text-white/50 hover:text-white uppercase text-xs tracking-widest">← DASHBOARD</button>
+            <button onclick="regenerateTrip()" class="absolute top-6 right-6 text-neutral-500 hover:text-orange-500 uppercase text-xs tracking-widest transition-colors flex items-center space-x-1">
+              <span>↺</span><span>Redo</span>
+            </button>
             <h1 class="font-serif italic text-5xl text-white mb-2" id="itinerary-title">Destination</h1>
             <p class="text-neutral-400 text-sm uppercase tracking-widest mb-4" id="itinerary-meta">Meta Info</p>
             
@@ -815,7 +853,7 @@
             });
 
             // Loading
-            safe(() => document.querySelector('#view-loading h1').innerText = t.loading);
+            safe(() => document.getElementById('loading-title').innerText = t.loading);
             // Back
             safe(() => document.querySelector('#btn-back').innerHTML = `<span>←</span> <span>${t.back}</span>`);
 
@@ -1113,6 +1151,7 @@
                 oldView.classList.remove('fade-out');
                 newView.classList.remove('hidden');
                 currentStep = newStep;
+                if (newStep === 9.5) startLoadingAnimation();
             }, 500);
         }
 
@@ -1319,6 +1358,7 @@
             if(!dest) { alert(currentLang === 'Chinese' ? '请输入目的地！' : 'Please enter destination!'); return; }
             
             document.getElementById('loading-city').innerText = dest;
+            document.getElementById('loading-title').innerText = currentLang === 'Chinese' ? 'AI 思考中...' : 'Planning your trip';
             updateView(9.5); 
 
             // Pass language + currency to backend
@@ -1350,6 +1390,7 @@
                     updateView(9);
                     return;
                 }
+                stopLoadingAnimation();
                 renderItinerary(data);
                 savedTrips.unshift(data);
                 lsSaveTrips(savedTrips);
@@ -1359,9 +1400,10 @@
                 console.warn('Generation failed:', err.message);
                 // Show retry screen instead of alert
                 const isCN = currentLang === 'Chinese';
+                stopLoadingAnimation();
                 updateView(9.5);
                 document.getElementById('loading-city').innerText = dest;
-                document.querySelector('#view-loading h1').innerText = isCN ? '网络连接中断 😔' : 'Connection Lost 😔';
+                document.getElementById('loading-title').innerText = isCN ? '网络连接中断 😔' : 'Connection Lost 😔';
                 // Add retry button
                 const existing = document.getElementById('retry-btn');
                 if (existing) existing.remove();
@@ -1373,7 +1415,7 @@
                 const cancelBtn = document.createElement('button');
                 cancelBtn.innerText = isCN ? '返回' : 'Go Back';
                 cancelBtn.className = 'mt-3 px-8 py-3 text-neutral-500 hover:text-white uppercase text-xs tracking-widest transition-colors';
-                cancelBtn.onclick = () => { btn.remove(); cancelBtn.remove(); updateView(9); document.querySelector('#view-loading h1').innerText = isCN ? 'AI 思考中...' : 'Wander AI is thinking...'; };
+                cancelBtn.onclick = () => { btn.remove(); cancelBtn.remove(); updateView(9); document.getElementById('loading-title').innerText = isCN ? 'AI 思考中...' : 'Planning your trip'; };
                 const loadingView = document.getElementById('view-loading');
                 loadingView.appendChild(btn);
                 loadingView.appendChild(cancelBtn);
@@ -1965,37 +2007,59 @@
         function doSharePDF() {
             document.getElementById('share-modal').classList.add('hidden');
             document.getElementById('share-modal').style.display = '';
-            // Build a clean printable page in a new window
+            // Build a premium printable page in a new window
             const isCN = currentLang === 'Chinese';
             const trip = currentItineraryData;
             let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<title>${trip.destination}</title>
+<title>${trip.destination} — Wander</title>
 <style>
-  body { font-family: Georgia, serif; max-width: 700px; margin: 40px auto; color: #111; line-height: 1.7; }
-  h1 { font-size: 2.5em; margin-bottom: 4px; }
-  .meta { color: #888; font-size: 0.85em; margin-bottom: 32px; }
-  h2 { font-size: 1.2em; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-top: 32px; color: #333; }
-  .activity { margin: 16px 0; }
-  .time { color: #888; font-size: 0.8em; font-family: monospace; }
-  .title { font-size: 1.1em; font-weight: bold; margin: 2px 0; }
-  .desc { color: #555; font-size: 0.9em; }
-  .cost { color: #e67e22; font-size: 0.85em; }
-  @media print { body { margin: 20px; } }
+  body { font-family: Georgia, serif; margin: 0; background: #fff; color: #1a1a1a; }
+  .cover { background: #0a0a0a; color: white; padding: 60px 40px; }
+  .cover h1 { font-size: 3em; font-style: italic; margin: 0 0 8px; }
+  .cover .meta { color: #888; font-size: 0.9em; letter-spacing: 0.2em; text-transform: uppercase; }
+  .cover .wander-brand { color: #ff5e00; font-size: 0.75em; letter-spacing: 0.4em; text-transform: uppercase; margin-bottom: 24px; }
+  .logistics { background: #111; color: #ccc; padding: 20px 40px; font-size: 0.82em; border-bottom: 3px solid #ff5e00; }
+  .logistics span { color: #ff5e00; font-weight: bold; }
+  .content { padding: 40px; }
+  .day-header { color: #ff5e00; font-size: 0.75em; letter-spacing: 0.3em; text-transform: uppercase; border-bottom: 1px solid #eee; padding-bottom: 8px; margin: 32px 0 16px; }
+  .activity { margin: 20px 0; padding-left: 16px; border-left: 2px solid #f0f0f0; }
+  .activity .time { color: #999; font-size: 0.75em; font-family: monospace; }
+  .activity .title { font-size: 1.1em; font-weight: bold; margin: 2px 0 4px; }
+  .activity .desc { color: #555; font-size: 0.88em; line-height: 1.6; }
+  .activity .cost { color: #ff5e00; font-size: 0.8em; margin-top: 4px; }
+  .activity .tip { color: #888; font-size: 0.78em; margin-top: 6px; font-style: italic; }
+  .footer { text-align: center; padding: 32px; color: #ccc; font-size: 0.75em; border-top: 1px solid #eee; letter-spacing: 0.15em; text-transform: uppercase; }
+  @media print { body { margin: 0; } }
 </style></head><body>`;
+            html += `<div class="cover">`;
+            html += `<div class="wander-brand">✈ Wander — AI Travel Planner</div>`;
             html += `<h1>${trip.destination}</h1>`;
-            html += `<div class="meta">${trip.summary?.date || ''} · ${trip.summary?.duration || ''} ${isCN ? '天' : 'days'} · Wander AI</div>`;
+            html += `<div class="meta">${trip.summary?.date || (isCN ? '随时出发' : 'Anytime')} &nbsp;·&nbsp; ${trip.summary?.duration || trip.days?.length || '?'} ${isCN ? '天' : 'days'} &nbsp;·&nbsp; ${trip.summary?.city || trip.destination}</div>`;
+            html += `</div>`;
+            // Logistics block
+            if (trip.flight || trip.hotel || trip.budget_summary) {
+                html += `<div class="logistics">`;
+                if (trip.flight) html += `<div>✈️ <span>${trip.flight.airline} ${trip.flight.flight_num}</span> · ${trip.flight.route} · ${trip.flight.class} · ${trip.flight.price}</div>`;
+                if (trip.hotel) html += `<div>🏨 <span>${trip.hotel.name}</span> · ${trip.hotel.rating} · $${trip.hotel.price_per_night}/night · Total: $${trip.hotel.total_stay}</div>`;
+                if (trip.budget_summary) html += `<div>💰 Flight: $${trip.budget_summary.flight} | Stay: $${trip.budget_summary.stay} | Food: $${trip.budget_summary.food_drink} | <span>Total: $${trip.budget_summary.total}</span></div>`;
+                html += `</div>`;
+            }
+            html += `<div class="content">`;
             (trip.days || []).forEach((day, i) => {
-                html += `<h2>${isCN ? '第' + (i+1) + '天' : 'Day ' + (i+1)}${day.theme ? ' — ' + day.theme : ''}</h2>`;
+                html += `<div class="day-header">${day.day || (isCN ? '第' + (i+1) + '天' : 'Day ' + (i+1))}${day.theme ? ' — ' + day.theme : ''}</div>`;
                 (day.activities || []).forEach(a => {
                     html += `<div class="activity">`;
                     html += `<div class="time">${a.time || ''}</div>`;
                     html += `<div class="title">${a.title || ''}</div>`;
-                    if (a.description) html += `<div class="desc">${a.description}</div>`;
-                    if (a.cost) html += `<div class="cost">${a.cost}</div>`;
+                    if (a.address) html += `<div class="time">📌 ${a.address}</div>`;
+                    if (a.desc || a.description) html += `<div class="desc">${a.desc || a.description}</div>`;
+                    if (a.cost && a.cost !== '0') html += `<div class="cost">💵 ${a.cost}</div>`;
+                    if (a.pro_tip) html += `<div class="tip">💡 ${a.pro_tip}</div>`;
                     html += `</div>`;
                 });
             });
-            html += `<div style="margin-top:40px;color:#ccc;font-size:0.8em;text-align:center">Generated by Wander AI · web-production-3d2fe.up.railway.app</div>`;
+            html += `</div>`;
+            html += `<div class="footer">Generated by Wander AI &nbsp;·&nbsp; web-production-3d2fe.up.railway.app &nbsp;·&nbsp; ${new Date().toLocaleDateString()}</div>`;
             html += `</body></html>`;
             const w = window.open('', '_blank');
             w.document.write(html);
@@ -2164,6 +2228,83 @@
                     <a href="${airbnbUrl}" target="_blank" class="text-[10px] text-white bg-pink-700 hover:bg-pink-600 px-3 py-1.5 rounded-full transition-colors flex-shrink-0">🏠 Airbnb</a>
                 </div>
             `;
+        }
+
+        // === DEMO MODE ===
+        const DEMO_TRIP = {
+          destination: "Tokyo, Japan",
+          id: "demo",
+          created_at: "Demo",
+          summary: { city: "Tokyo", date: "Anytime", duration: 3 },
+          hotel: { name: "Park Hyatt Tokyo", address: "3-7-1-2 Nishi Shinjuku", price_per_night: "450", total_stay: "1350", rating: "4.9/5", why: "Iconic Lost in Translation hotel, stunning city views from floor 41." },
+          flight: { airline: "ANA", flight_num: "NH001", route: "YYZ \u2192 NRT", duration: "13h 20m", price: "1240", class: "Economy" },
+          budget_summary: { flight: "1240", stay: "1350", food_drink: "600", transport: "120", activities: "200", shopping_buffer: "490", total: "4000" },
+          days: [
+            {
+              day: "Day 01", theme: "Arrival & Shinjuku Nights",
+              activities: [
+                { time: "03:00 PM", tag: "Arrival", color: "text-blue-400", title: "Check-in: Park Hyatt Tokyo", address: "3-7-1-2 Nishi Shinjuku, Shinjuku-ku", desc: "Drop bags. Request a room on floor 41+ for unobstructed Mt. Fuji views on clear days. The Lobby bar does exceptional whisky highballs.", duration: "45 min", cost: "0", lat: 35.6866, lng: 139.6897, transit: "From Narita: Take Narita Express (N'EX) to Shinjuku Station (80 min, \u00a53,070). Exit West Exit \u2192 10 min walk south on Koshu Kaido Ave.", pro_tip: "Ask front desk for 'Fuji-side' room \u2014 same price, massively better view.", photo_spot: "Floor 41 corridor window at golden hour \u2014 city grid stretching to infinity." },
+                { time: "06:30 PM", tag: "Dinner", color: "text-orange-400", title: "Omoide Yokocho (Memory Lane)", address: "1-chome Nishishinjuku, Shinjuku-ku", desc: "Tiny smoky yakitori alley from the 1940s. Order: chicken hearts (\u00a5200), negima (\u00a5200), tsukune (\u00a5300). Wash down with draft Sapporo.", duration: "90 min", cost: "1500", lat: 35.6938, lng: 139.6996, transit: "Walk east from hotel through Shinjuku Station West Exit underground arcade (10 min).", pro_tip: "Sit at the counter and watch the master grill. Ask for 'omakase' if you trust them.", photo_spot: "The red lanterns at dusk \u2014 shoot from south end looking north." },
+                { time: "09:00 PM", tag: "Night", color: "text-purple-400", title: "Golden Gai Bar Hopping", address: "Kabukicho, Shinjuku-ku", desc: "6 alleys, 200+ tiny bars each seating 8-15 people. Try: Albatross (classic rock, \u00a5600 cover), Deathmatch in Hell (horror theme, \u00a5500). One drink per bar, move on.", duration: "2 hrs", cost: "3000", lat: 35.6950, lng: 139.7038, transit: "5 min walk east from Omoide Yokocho through Kabukicho.", pro_tip: "Some bars are regulars-only. If they look hesitant, bow and try next door \u2014 no offense taken.", photo_spot: "The neon sign alley entrance at night \u2014 long exposure for light trails." }
+              ]
+            },
+            {
+              day: "Day 02", theme: "Culture & Calm \u2014 Yanaka + Ueno",
+              activities: [
+                { time: "08:00 AM", tag: "Morning", color: "text-yellow-400", title: "Yanaka Ginza Morning Walk", address: "Yanaka, Taito-ku, Tokyo", desc: "Old Tokyo preserved. Start at Yuyake Dandan staircase. Buy: fresh taiyaki (\u00a5200), sesame crackers from Kayaba Coffee (open 8am). Visit Yanaka Cemetery for cherry trees.", duration: "2 hrs", cost: "500", lat: 35.7266, lng: 139.7664, transit: "Take Yamanote Line from Shinjuku \u2192 Nippori (18 min, \u00a5220). Exit South Gate.", pro_tip: "Go before 10am \u2014 streets are yours, cats are out.", photo_spot: "Yuyake Dandan at dawn \u2014 orange stairs descending into the shopping street." },
+                { time: "11:00 AM", tag: "Museum", color: "text-blue-400", title: "Tokyo National Museum", address: "13-9 Uenokoen, Taito-ku", desc: "Japan's oldest and largest museum. Focus on: Honkan (Japanese Gallery) floors 1-2, Treasury Room (open Fri-Sun only). Allow 2.5 hrs minimum. \u00a51000 entry.", duration: "2.5 hrs", cost: "1000", lat: 35.7188, lng: 139.7762, transit: "15 min walk south through Ueno Park from Yanaka.", pro_tip: "The Treasure House (Horyuji) opens Fri-Sun \u2014 easily the best room in the museum.", photo_spot: "The main Honkan building from the central garden pond \u2014 best in morning light." },
+                { time: "02:00 PM", tag: "Lunch", color: "text-orange-400", title: "Ippudo Ramen \u2014 Ueno", address: "4-9-13 Ueno, Taito-ku", desc: "Tokyo branch of the legendary Hakata chain. Order: Shiromaru Classic (\u00a5990), add Kaedama (extra noodle, \u00a5130). Wait: 20-40 min typical.", duration: "1 hr", cost: "1200", lat: 35.7078, lng: 139.7745, transit: "10 min walk south through Ueno Park.", pro_tip: "Tell them 'kata-me, oi-oil, komi-tare' for firm noodles, extra pork fat, full flavor.", photo_spot: "The red lantern above the entrance \u2014 shoot from the queue for authenticity." },
+                { time: "04:00 PM", tag: "Shopping", color: "text-pink-400", title: "Akihabara Electric Town", address: "1-chome Akihabara, Taito-ku", desc: "Must-see: Yodobashi Camera (electronics 8F), Super Potato (retro games 5F, 2-5-1 Sotokanda), Animate (anime merch). Budget: whatever you allow yourself.", duration: "2 hrs", cost: "5000", lat: 35.7023, lng: 139.7745, transit: "Walk south from Ueno 20 min, or JR Yamanote Line 1 stop (\u00a5140).", pro_tip: "Prices on electronics are fixed \u2014 no bargaining. But ask for 'duty-free' if you show passport (8% off for tourists).", photo_spot: "The main Akihabara crossing at dusk \u2014 neon signs on all buildings." }
+              ]
+            },
+            {
+              day: "Day 03", theme: "Zen & Departure \u2014 Asakusa + Harajuku",
+              activities: [
+                { time: "07:00 AM", tag: "Temple", color: "text-yellow-400", title: "Senso-ji Temple at Dawn", address: "2-3-1 Asakusa, Taito-ku", desc: "Tokyo's oldest temple, founded 628 AD. Arrive before 8am to beat crowds. Ritual: wash hands at Chozuya fountain, draw omikuji fortune slip (\u00a5200). Buy: Ningyo-yaki cakes fresh from Nakamise stalls (open from 7am).", duration: "1.5 hrs", cost: "200", lat: 35.7148, lng: 139.7967, transit: "From hotel: Toei Oedo Line Shinjuku \u2192 Asakusa (29 min, \u00a5290).", pro_tip: "Rent kimono from Sakura nearby (\u00a53,000 for 3 hrs) for best photos \u2014 many shops open from 9am.", photo_spot: "Kaminarimon Gate at first light, shooting up at the giant lantern with mist." },
+                { time: "10:00 AM", tag: "Harajuku", color: "text-pink-400", title: "Takeshita Street + Meiji Shrine", address: "1-7 Jingumae, Shibuya-ku", desc: "Takeshita Street: 350m of youth fashion. Must-try: Marion Crepes (original since 1976, \u00a5600). Then walk 10 min to Meiji Shrine \u2014 complete silence in 175 acres of forest within the city.", duration: "2.5 hrs", cost: "800", lat: 35.6702, lng: 139.7026, transit: "Take Ginza Line Asakusa \u2192 Omotesando (25 min, \u00a5280). Walk north 8 min to Harajuku.", pro_tip: "Meiji Shrine: write a wish on an ema wooden plaque (\u00a5500) and hang it with thousands of others.", photo_spot: "The giant torii gate entering Meiji Shrine forest \u2014 vertical shot with trees framing." },
+                { time: "01:00 PM", tag: "Farewell Lunch", color: "text-orange-400", title: "Ichiran Ramen \u2014 Solo Booth Experience", address: "1-22-7 Jinnan, Shibuya-ku", desc: "The original solo ramen experience. Private booth, customize 10 parameters on your order form. Order: Tonkotsu base, firm noodles, extra rich broth, green onions on side, half piece of pork.", duration: "45 min", cost: "1200", lat: 35.6614, lng: 139.7009, transit: "10 min walk south from Harajuku through Omotesando.", pro_tip: "The booth dividers can be lifted if you bring a friend \u2014 but solo is the authentic experience.", photo_spot: "The bamboo curtain lowering in front of you \u2014 quintessential Tokyo moment." }
+              ]
+            }
+          ]
+        };
+
+        function loadDemo() {
+          renderItinerary(DEMO_TRIP);
+          updateView(10);
+          setTimeout(() => showToast('\u2728 Demo mode \u2014 generate your own trip anytime!'), 1000);
+        }
+
+        // === LOADING ANIMATION ===
+        const LOADING_MSGS = {
+          English: ["Consulting local experts...", "Finding hidden gems...", "Checking restaurant reservations...", "Calculating optimal routes...", "Curating your perfect day...", "Almost there..."],
+          Chinese: ["\u548b\u8baf\u5f53\u5730\u8fbe\u4eba...", "\u6316\u6398\u9690\u85cf\u5b9d\u85cf...", "\u6838\u67e5\u9910\u5385\u9884\u8ba2...", "\u89c4\u5212\u6700\u4f18\u8def\u7ebf...", "\u7cbe\u5fc3\u5b89\u6392\u6bcf\u4e00\u5929...", "\u5feb\u597d\u4e86..."]
+        };
+        let _loadingTimer = null;
+        function startLoadingAnimation() {
+          let i = 0;
+          const msgs = LOADING_MSGS[currentLang] || LOADING_MSGS.English;
+          const el = document.getElementById('loading-msg');
+          if (_loadingTimer) clearInterval(_loadingTimer);
+          if (el) el.innerText = msgs[0];
+          _loadingTimer = setInterval(() => {
+            i = (i + 1) % msgs.length;
+            if (el) {
+              el.style.opacity = '0';
+              setTimeout(() => { el.innerText = msgs[i]; el.style.opacity = '1'; }, 300);
+            }
+          }, 2500);
+        }
+        function stopLoadingAnimation() {
+          if (_loadingTimer) { clearInterval(_loadingTimer); _loadingTimer = null; }
+        }
+
+        // === REGENERATE TRIP ===
+        function regenerateTrip() {
+          const isCN = currentLang === 'Chinese';
+          const confirmed = window.confirm(isCN ? '\u91cd\u65b0\u751f\u6210\u884c\u7a0b\uff1f\uff08\u5f53\u524d\u884c\u7a0b\u4e0d\u4f1a\u81ea\u52a8\u4fdd\u5b58\uff09' : "Regenerate this trip? Current itinerary won't be saved.");
+          if (!confirmed) return;
+          closeItinerary();
+          setTimeout(() => startPlanning(), 100);
         }
 
         // === PWA: Service Worker Registration ===
