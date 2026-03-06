@@ -658,22 +658,23 @@
 
         <!-- FAB & Menu -->
         <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end" id="fab-container">
+            <!-- First-time hint -->
+            <div id="fab-hint" class="hidden mb-2 flex items-center space-x-2 animate-bounce">
+                <span class="text-orange-400 text-xs whitespace-nowrap" id="fab-hint-text">Tap + for tools</span>
+                <span class="text-orange-400 text-lg">↓</span>
+            </div>
             <div id="fab-menu" class="mb-4 space-y-3 opacity-0 pointer-events-none transition-all duration-300 translate-y-10 flex flex-col items-end">
-                <button onclick="fabAction('add')" class="flex items-center space-x-3 group">
-                    <span class="text-white text-xs bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Add Activity</span>
-                    <div class="w-10 h-10 rounded-full bg-neutral-800 border border-neutral-700 text-white flex items-center justify-center shadow-lg hover:bg-orange-500 transition-colors">✎</div>
+                <button onclick="fabAction('add')" class="flex items-center space-x-3">
+                    <span class="text-white text-xs bg-neutral-800 border border-neutral-700 px-3 py-1.5 rounded-full whitespace-nowrap" id="fab-label-add">✎ Add Activity</span>
                 </button>
-                <button onclick="fabAction('share')" class="flex items-center space-x-3 group">
-                    <span class="text-white text-xs bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Share Trip</span>
-                    <div class="w-10 h-10 rounded-full bg-neutral-800 border border-neutral-700 text-white flex items-center justify-center shadow-lg hover:bg-blue-500 transition-colors">↗</div>
+                <button onclick="fabAction('share')" class="flex items-center space-x-3">
+                    <span class="text-white text-xs bg-neutral-800 border border-neutral-700 px-3 py-1.5 rounded-full whitespace-nowrap" id="fab-label-share">↗ Share Trip</span>
                 </button>
-                <button onclick="fabAction('pack')" class="flex items-center space-x-3 group">
-                    <span class="text-white text-xs bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap" id="fab-pack-label">Packing List</span>
-                    <div class="w-10 h-10 rounded-full bg-neutral-800 border border-neutral-700 text-white flex items-center justify-center shadow-lg hover:bg-green-600 transition-colors">🧳</div>
+                <button onclick="fabAction('pack')" class="flex items-center space-x-3">
+                    <span class="text-white text-xs bg-neutral-800 border border-neutral-700 px-3 py-1.5 rounded-full whitespace-nowrap" id="fab-label-pack" >🧳 Packing List</span>
                 </button>
-                <button onclick="fabAction('ask')" class="flex items-center space-x-3 group">
-                    <span class="text-white text-xs bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Ask AI</span>
-                    <div class="w-10 h-10 rounded-full bg-neutral-800 border border-neutral-700 text-white flex items-center justify-center shadow-lg hover:bg-purple-500 transition-colors">✨</div>
+                <button onclick="fabAction('ask')" class="flex items-center space-x-3">
+                    <span class="text-white text-xs bg-neutral-800 border border-neutral-700 px-3 py-1.5 rounded-full whitespace-nowrap" id="fab-label-ask">✨ Ask AI</span>
                 </button>
             </div>
             <button onclick="toggleFab()" id="fab-main" class="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center shadow-lg hover:bg-orange-500 hover:text-white transition-all text-2xl font-serif z-50 transition-transform duration-300">+</button>
@@ -949,6 +950,7 @@
             // Dashboard
             safe(() => document.querySelector('#view-dashboard p').innerText = t.ready);
             updateDashboardGreeting();
+            updateFabLabels();
             safe(() => document.getElementById('btn-create-itinerary').innerText = t.create_btn);
             safe(() => document.querySelector('#recent-trips-section p').innerText = t.saved_trips);
             // Dashboard labels
@@ -1825,6 +1827,8 @@
             document.getElementById('budget-progress').style.width = '0%';
             document.getElementById('budget-pct').innerText = '0% spent';
             document.getElementById('budget-bar').classList.remove('hidden');
+            updateFabLabels();
+            setTimeout(showFabHint, 2000);
             document.getElementById('fab-container').style.bottom = (document.getElementById('budget-bar').offsetHeight + 16) + 'px';
         }
 
@@ -2255,6 +2259,24 @@
             } else {
                 document.getElementById('budget-bar-label').innerText = isCN ? '实时预算' : 'Live Budget';
             }
+        }
+
+        function showFabHint() {
+            if (localStorage.getItem('wander_fab_hint_seen')) return;
+            const hint = document.getElementById('fab-hint');
+            const isCN = currentLang === 'Chinese';
+            document.getElementById('fab-hint-text').innerText = isCN ? '点 + 查看工具' : 'Tap + for tools';
+            hint.classList.remove('hidden');
+            setTimeout(() => { hint.classList.add('hidden'); localStorage.setItem('wander_fab_hint_seen', '1'); }, 4000);
+        }
+
+        function updateFabLabels() {
+            const isCN = currentLang === 'Chinese';
+            const safe = (id, text) => { const el = document.getElementById(id); if (el) el.innerText = text; };
+            safe('fab-label-add',   isCN ? '✎ 添加活动'   : '✎ Add Activity');
+            safe('fab-label-share', isCN ? '↗ 分享行程'   : '↗ Share Trip');
+            safe('fab-label-pack',  isCN ? '🧳 打包清单'  : '🧳 Packing List');
+            safe('fab-label-ask',   isCN ? '✨ 问问 AI'   : '✨ Ask AI');
         }
 
         function toggleFab() {
