@@ -603,6 +603,10 @@
                     <div class="flex items-start"><span class="mr-2">🚕</span> <span id="log-transport" class="italic">Transport tips...</span></div>
                     <div class="mt-2 pt-2 border-t border-neutral-800 flex items-start"><span class="mr-2">💰</span> <span id="log-budget" class="text-white font-bold">Budget breakdown...</span></div>
                 </div>
+                <div id="weather-itinerary-card" class="hidden mt-3 pt-3 border-t border-neutral-800">
+                  <div class="text-xs text-orange-500 uppercase tracking-widest mb-2" id="weather-itin-label">Weather & Clothing</div>
+                  <div id="weather-itinerary-content" class="space-y-1.5 text-xs text-neutral-400"></div>
+                </div>
                 <div id="kbyg-section" class="hidden mt-3 pt-3 border-t border-neutral-800">
                   <div class="text-xs text-orange-500 uppercase tracking-widest mb-2">Before You Go</div>
                   <div id="kbyg-content" class="space-y-1.5 text-xs text-neutral-400"></div>
@@ -1021,6 +1025,7 @@
 
         // Map & Budget state
         let currentItineraryData = null;
+        let lastWeatherData = null; // stores weather summary for itinerary page
         let currentDayIndex = 0;
         let groupSize = 1; // Default solo
         let totalBudgetAmount = 0;
@@ -1629,6 +1634,32 @@
                 }
                 if(data.logistics && data.logistics.transport_tip) document.getElementById('log-transport').innerText = data.logistics.transport_tip;
                 if(data.budget_summary) document.getElementById('log-budget').innerText = `Flight: ${data.budget_summary.flight} | Stay: ${data.budget_summary.stay} | Total: ${data.budget_summary.total}`;
+                // Weather + clothing card
+                const weatherCard = document.getElementById('weather-itinerary-card');
+                const weatherContent = document.getElementById('weather-itinerary-content');
+                if (lastWeatherData && weatherCard && weatherContent) {
+                    const w = lastWeatherData;
+                    const isCN = currentLang === 'Chinese';
+                    document.getElementById('weather-itin-label').innerText = isCN ? '天气 & 穿衣建议' : 'Weather & Clothing';
+                    weatherCard.classList.remove('hidden');
+                    // Clothing recommendation
+                    let clothing = '';
+                    if (w.avgMax > 30) clothing = isCN ? '轻薄透气的夏装、防晒衣、帽子、防晒霜必备' : 'Light breathable clothes, sun hat, sunscreen essential';
+                    else if (w.avgMax > 20) clothing = isCN ? '短袖+薄外套，傍晚可能需要加衣' : 'T-shirts with a light jacket for evenings';
+                    else if (w.avgMax > 10) clothing = isCN ? '长袖、中厚外套，建议叠穿' : 'Layers recommended — sweater + medium jacket';
+                    else if (w.avgMax > 0) clothing = isCN ? '厚外套、围巾手套，注意保暖' : 'Warm coat, scarf and gloves needed';
+                    else clothing = isCN ? '羽绒服+多层保暖，防滑靴，极寒装备' : 'Heavy winter coat, thermal layers, warm boots';
+                    if (w.totalPrecip > 30) clothing += (isCN ? '；降水较多，带雨衣或伞' : '; pack rain jacket/umbrella');
+                    const emoji = w.avgMax > 28 ? '☀️' : w.avgMax > 15 ? '🌤️' : w.avgMin < 0 ? '❄️' : '🧥';
+                    weatherContent.innerHTML = `
+                        <div>${emoji} <span class="text-white">${w.avgMin.toFixed(0)}°C — ${w.avgMax.toFixed(0)}°C</span> <span class="text-neutral-600 ml-1">${w.name}, ${w.country}</span></div>
+                        <div>👕 <span class="text-neutral-300">${clothing}</span></div>
+                        ${w.totalPrecip > 30 ? `<div>🌧️ <span class="text-neutral-300">${isCN ? `预计降水 ${w.totalPrecip.toFixed(0)}mm，多备雨具` : `${w.totalPrecip.toFixed(0)}mm rain expected — bring waterproofs`}</span></div>` : ''}
+                    `;
+                } else if (weatherCard) {
+                    weatherCard.classList.add('hidden');
+                }
+
                 if (data.know_before_you_go) {
                     const k = data.know_before_you_go;
                     const kSection = document.getElementById('kbyg-section');
@@ -2309,6 +2340,9 @@
                     return '🌤️';
                 }
 
+                // Store globally for itinerary page
+                lastWeatherData = { avgMax, avgMin, totalPrecip, dominantCode, name, country, startDate: fmt(startDate), endDate: fmt(endDate) };
+
                 const isCN = currentLang === 'Chinese';
                 document.getElementById('weather-city-label').innerText = isCN ? '天气预报' : 'Weather Forecast';
                 document.getElementById('weather-city-name').innerText = `${name}, ${country}`;
@@ -2502,7 +2536,7 @@
                     body: JSON.stringify({
                         destination: currentItineraryData.destination,
                         duration: currentItineraryData.summary?.duration || 7,
-                        weather_hint: '',
+                        weather_hint: lastWeatherData ? `${lastWeatherData.avgMin.toFixed(0)}-${lastWeatherData.avgMax.toFixed(0)}°C, precip ${lastWeatherData.totalPrecip.toFixed(0)}mm` : '',
                         profile: currentData,
                         language: currentLang
                     })
