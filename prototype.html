@@ -715,6 +715,10 @@
             safe(() => document.querySelector('#view-loading h1').innerText = t.loading);
             // Back
             safe(() => document.querySelector('#btn-back').innerHTML = `<span>←</span> <span>${t.back}</span>`);
+
+            // Re-render sports & shopping buttons in new language
+            populateSports();
+            populateShopping();
         }
 
         // === DATASETS ===
@@ -734,21 +738,39 @@
             "Sao Paulo, Brazil", "Rio de Janeiro, Brazil", "Buenos Aires, Argentina", "Lima, Peru", "Santiago, Chile", "Bogota, Colombia"
         ];
 
-        const SPORTS_LIST = [
-            "Gym / Fitness", "Running", "Hiking", "Cycling", "Swimming", "Yoga", "Pilates", 
-            "Crossfit", "Boxing", "MMA", "Tennis", "Golf", "Basketball", "Football / Soccer", 
-            "Skiing", "Snowboarding", "Surfing", "Scuba Diving", "Snorkeling", "Kayaking", 
-            "Rock Climbing", "Bouldering", "Horse Riding", "Fencing", "Archery", "Badminton", 
-            "Table Tennis", "Volleyball", "Skateboarding", "Parkour", "Dance", "No Sports (Relax Only)"
-        ];
+        const SPORTS_LIST = {
+            English: [
+                "Gym / Fitness", "Running", "Hiking", "Cycling", "Swimming", "Yoga", "Pilates",
+                "Crossfit", "Boxing", "MMA", "Tennis", "Golf", "Basketball", "Football / Soccer",
+                "Skiing", "Snowboarding", "Surfing", "Scuba Diving", "Snorkeling", "Kayaking",
+                "Rock Climbing", "Bouldering", "Horse Riding", "Fencing", "Archery", "Badminton",
+                "Table Tennis", "Volleyball", "Skateboarding", "Parkour", "Dance", "No Sports (Relax Only)"
+            ],
+            Chinese: [
+                "健身房", "跑步", "徒步登山", "骑行", "游泳", "瑜伽", "普拉提",
+                "CrossFit", "拳击", "综合格斗", "网球", "高尔夫", "篮球", "足球",
+                "滑雪", "单板滑雪", "冲浪", "水肺潜水", "浮潜", "皮划艇",
+                "攀岩", "抱石", "马术", "击剑", "射箭", "羽毛球",
+                "乒乓球", "排球", "滑板", "跑酷", "舞蹈", "不运动（纯休闲）"
+            ]
+        };
 
-        const SHOPPING_LIST = [
-            "Luxury Brands", "Streetwear", "Vintage / Thrift", "Sneakers", "Local Art & Design", 
-            "Tech & Gadgets", "Cameras", "Watches", "Jewelry", "Skincare & Beauty", "Perfume", 
-            "Antiques", "Furniture / Home", "Books / Rare Books", "Vinyl Records", "Anime / Manga", 
-            "Toys / Collectibles", "Traditional Crafts", "Souvenirs", "Gourmet Food", "Wine / Spirits",
-            "Department Stores", "Outlet Malls", "Flea Markets"
-        ];
+        const SHOPPING_LIST = {
+            English: [
+                "Luxury Brands", "Streetwear", "Vintage / Thrift", "Sneakers", "Local Art & Design",
+                "Tech & Gadgets", "Cameras", "Watches", "Jewelry", "Skincare & Beauty", "Perfume",
+                "Antiques", "Furniture / Home", "Books / Rare Books", "Vinyl Records", "Anime / Manga",
+                "Toys / Collectibles", "Traditional Crafts", "Souvenirs", "Gourmet Food", "Wine / Spirits",
+                "Department Stores", "Outlet Malls", "Flea Markets"
+            ],
+            Chinese: [
+                "奢侈品", "潮流街头", "古着/二手", "球鞋", "本土设计",
+                "数码科技", "相机", "名表", "珠宝首饰", "护肤美妆", "香水",
+                "古玩", "家居家具", "书店/古书", "黑胶唱片", "动漫周边",
+                "玩具/手办", "传统工艺品", "纪念品", "美食特产", "酒类",
+                "百货商场", "奥特莱斯", "跳蚤市场"
+            ]
+        };
 
         let isEditingMode = false;
         let currentData = { sports: [], tags: [] };
@@ -804,10 +826,13 @@
         // === DATA POPULATION ===
         function populateSports() {
             const container = document.getElementById('sports-container');
+            if (!container) return;
+            const list = SPORTS_LIST[currentLang] || SPORTS_LIST.English;
+            const noSportsKeyword = currentLang === 'Chinese' ? '不运动' : 'No Sports';
             container.innerHTML = '';
-            SPORTS_LIST.forEach(sport => {
+            list.forEach(sport => {
                 const btn = document.createElement('button');
-                btn.className = sport.includes("No Sports") ? "tag-btn border-neutral-600 text-neutral-400" : "tag-btn";
+                btn.className = sport.includes(noSportsKeyword) ? "tag-btn border-neutral-600 text-neutral-400" : "tag-btn";
                 btn.innerText = sport;
                 btn.onclick = () => toggleSport(btn);
                 container.appendChild(btn);
@@ -816,8 +841,10 @@
 
         function populateShopping() {
             const container = document.getElementById('shopping-container');
+            if (!container) return;
+            const list = SHOPPING_LIST[currentLang] || SHOPPING_LIST.English;
             container.innerHTML = '';
-            SHOPPING_LIST.forEach(item => {
+            list.forEach(item => {
                 const btn = document.createElement('button');
                 btn.className = "tag-btn";
                 btn.innerText = item;
