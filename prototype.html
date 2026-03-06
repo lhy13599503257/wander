@@ -1484,6 +1484,23 @@
                 const photoHtml = act.photo_spot ? `<div class="mt-2 text-[10px] text-purple-400">📸 ${act.photo_spot}</div>` : '';
                 const proTipHtml = act.pro_tip ? `<div class="mt-2 pt-2 border-t border-neutral-800/50 text-[10px] text-orange-400 leading-relaxed">💡 ${act.pro_tip}</div>` : '';
 
+                // Hotel booking links — detect check-in activities
+                const isHotelActivity = /check.?in|入住|hotel|酒店/i.test(act.title + ' ' + (act.tag || ''));
+                let hotelBookingHtml = '';
+                if (isHotelActivity) {
+                    // Extract hotel name (strip "Check-in: " prefix)
+                    const hotelName = act.title.replace(/^check.?in[:\s-]+/i, '').replace(/^入住[：:\s]*/i, '').trim();
+                    const cityHint = currentItineraryData?.destination?.split('→').find(c =>
+                        act.address ? act.address.includes(c.trim().split(',')[0]) : true
+                    )?.trim() || currentItineraryData?.destination || '';
+                    const bookingUrl = `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(hotelName + ' ' + cityHint)}`;
+                    const airbnbUrl = `https://www.airbnb.com/s/${encodeURIComponent(cityHint)}/homes`;
+                    hotelBookingHtml = `<div class="mt-2 flex gap-2 flex-wrap">
+                        <a href="${bookingUrl}" target="_blank" onclick="event.stopPropagation()" class="text-[10px] text-white bg-blue-700/80 hover:bg-blue-600 px-2 py-1 rounded transition-colors">🏨 Booking.com</a>
+                        <a href="${airbnbUrl}" target="_blank" onclick="event.stopPropagation()" class="text-[10px] text-white bg-pink-700/80 hover:bg-pink-600 px-2 py-1 rounded transition-colors">🏠 Airbnb</a>
+                    </div>`;
+                }
+
                 div.innerHTML = `
                     <div class="timeline-dot"></div>
                     <span class="absolute left-[-10px] top-[-20px] text-[10px] text-neutral-500 font-mono">${act.time}</span>
@@ -1501,6 +1518,7 @@
                         ${whatToDoHtml}
                         ${photoHtml}
                         ${proTipHtml}
+                        ${hotelBookingHtml}
                     </div>
                 `;
                 container.appendChild(div);
