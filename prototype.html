@@ -2262,25 +2262,29 @@
             modal.style.display = 'flex';
         }
 
-        function doShareLink() {
+        async function doShareLink() {
             if (!currentItineraryData) return;
+            const isCN = currentLang === 'Chinese';
+            const shareModal = document.getElementById('share-modal');
+            // Show loading state
+            showToast(isCN ? '⏳ 生成短链中...' : '⏳ Generating short link...');
+            shareModal.classList.add('hidden');
             try {
-                // Encode itinerary as base64 URL hash — no backend needed
                 const json = JSON.stringify(currentItineraryData);
                 const encoded = btoa(unescape(encodeURIComponent(json)));
-                const url = location.origin + location.pathname + '#trip=' + encoded;
-                navigator.clipboard.writeText(url).then(() => {
-                    document.getElementById('share-modal').classList.add('hidden');
-                    document.getElementById('share-modal').style.display = '';
-                    const msg = currentLang === 'Chinese'
-                        ? '🔗 链接已复制！发给朋友吧～'
-                        : '🔗 Link copied! Share with your friends!';
-                    showToast(msg);
-                }).catch(() => {
-                    // Clipboard API blocked — show URL for manual copy
-                    prompt(currentLang === 'Chinese' ? '复制这个链接：' : 'Copy this link:', url);
+                const longUrl = location.origin + location.pathname + '#trip=' + encoded;
+                // Shorten via is.gd (free, no key needed)
+                let finalUrl = longUrl;
+                try {
+                    const res = await fetch(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(longUrl)}`, { signal: AbortSignal.timeout(5000) });
+                    const short = await res.text();
+                    if (short && short.startsWith('http') && !short.includes('Error')) finalUrl = short.trim();
+                } catch(e) { /* fallback to long url */ }
+                await navigator.clipboard.writeText(finalUrl).catch(() => {
+                    prompt(isCN ? '复制这个链接：' : 'Copy this link:', finalUrl);
                 });
-            } catch(e) { alert('Error generating link: ' + e.message); }
+                showToast(isCN ? `🔗 短链已复制！${finalUrl}` : `🔗 Short link copied! ${finalUrl}`);
+            } catch(e) { alert('Error: ' + e.message); }
         }
 
         function doSharePDF() {
@@ -2464,9 +2468,15 @@
             if (w.totalPrecip > 30) clothing += (isCN ? '；雨水较多，带雨衣或折叠伞' : '; high rain — pack rain jacket or umbrella');
             const emoji = w.avgMax > 28 ? '☀️' : w.avgMax > 15 ? '🌤️' : w.avgMin < 0 ? '❄️' : '🧥';
             weatherContent.innerHTML = `
-                <div>${emoji} <span class="text-white">${w.avgMin.toFixed(0)}°C — ${w.avgMax.toFixed(0)}°C</span> <span class="text-neutral-600 ml-1">${w.name}, ${w.country}</span></div>
+                <div class="flex items-center space-x-2 mb-1">
+                  <span class="text-2xl">${emoji}</span>
+                  <div>
+                    <span class="text-white font-bold text-base">${w.avgMin.toFixed(0)}° — ${w.avgMax.toFixed(0)}°C</span>
+                    <span class="text-neutral-600 text-[10px] ml-2">${w.name}, ${w.country}</span>
+                  </div>
+                </div>
                 <div>👕 <span class="text-neutral-300">${clothing}</span></div>
-                ${w.totalPrecip > 30 ? `<div>🌧️ <span class="text-neutral-300">${isCN ? `预计降水 ${w.totalPrecip.toFixed(0)}mm` : `${w.totalPrecip.toFixed(0)}mm rain expected`}</span></div>` : ''}
+                ${w.totalPrecip > 30 ? `<div class="mt-1">🌧️ <span class="text-neutral-300">${isCN ? `预计降水 ${w.totalPrecip.toFixed(0)}mm` : `${w.totalPrecip.toFixed(0)}mm rain expected`}</span></div>` : ''}
             `;
         }
 
