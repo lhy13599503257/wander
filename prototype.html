@@ -368,9 +368,16 @@
             <div class="space-y-8">
                 <!-- DESTINATION INPUT -->
                 <div class="group relative">
-                    <label class="text-neutral-600 text-xs uppercase tracking-widest mb-2 block">Destination</label>
-                    <input type="text" id="trip-dest" placeholder="e.g. London, Tokyo, Reykjavik" class="minimal-input" autocomplete="off">
-                    <div id="dest-suggestions" class="autocomplete-list hidden"></div>
+                    <label class="text-neutral-600 text-xs uppercase tracking-widest mb-2 block" id="dest-label">Destination</label>
+                    <div class="flex items-end space-x-2">
+                        <div class="flex-1 relative">
+                            <input type="text" id="trip-dest" placeholder="e.g. Tokyo, Paris, Xiamen" class="minimal-input" autocomplete="off">
+                            <div id="dest-suggestions" class="autocomplete-list hidden"></div>
+                        </div>
+                        <button onclick="addDestination()" class="text-orange-500 hover:text-white border border-orange-500/40 hover:border-orange-500 px-2 py-1 text-xs uppercase tracking-widest transition-colors mb-1 flex-shrink-0" id="add-city-btn" title="Add another city">+ City</button>
+                    </div>
+                    <!-- Extra destinations -->
+                    <div id="extra-dests" class="mt-2 space-y-2 hidden"></div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-8">
@@ -1211,13 +1218,40 @@
             document.getElementById('btn-create-itinerary').innerText = `Create Itinerary  (${price} flight selected)`;
         }
 
+        function addDestination() {
+            const container = document.getElementById('extra-dests');
+            container.classList.remove('hidden');
+            const idx = container.children.length + 2;
+            const wrap = document.createElement('div');
+            wrap.className = 'relative flex items-center space-x-2';
+            wrap.innerHTML = `
+                <div class="flex-1 relative">
+                    <input type="text" placeholder="City ${idx}" class="minimal-input extra-dest-input text-lg" autocomplete="off">
+                    <div class="autocomplete-list hidden extra-dest-suggestions"></div>
+                </div>
+                <button onclick="this.parentElement.remove(); if(!document.getElementById('extra-dests').children.length) document.getElementById('extra-dests').classList.add('hidden');" class="text-neutral-600 hover:text-red-400 text-xs px-2">✕</button>`;
+            container.appendChild(wrap);
+            // Wire up autocomplete for this new input
+            const newInput = wrap.querySelector('.extra-dest-input');
+            const newSugg = wrap.querySelector('.extra-dest-suggestions');
+            setupAutocomplete(newInput, newSugg);
+        }
+
+        function getAllDestinations() {
+            const main = document.getElementById('trip-dest').value.trim();
+            if (!main) return '';
+            const extras = [...document.querySelectorAll('.extra-dest-input')]
+                .map(i => i.value.trim()).filter(Boolean);
+            return extras.length ? [main, ...extras].join(' → ') : main;
+        }
+
         async function startPlanning() {
-            const dest = document.getElementById('trip-dest').value;
+            const dest = getAllDestinations();
             const date = document.getElementById('trip-date').value;
             const days = document.getElementById('trip-days').value;
             const budget = document.getElementById('trip-budget').value;
             
-            if(!dest) { alert("Please enter destination!"); return; }
+            if(!dest) { alert(currentLang === 'Chinese' ? '请输入目的地！' : 'Please enter destination!'); return; }
             
             document.getElementById('loading-city').innerText = dest;
             updateView(9.5); 

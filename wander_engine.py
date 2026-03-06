@@ -15,7 +15,10 @@ def call_gemini(prompt):
     headers = {'Content-Type': 'application/json'}
     data = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"response_mime_type": "application/json"}
+        "generationConfig": {
+            "response_mime_type": "application/json",
+            "thinkingConfig": {"thinkingBudget": 0}  # Disable thinking = 5x faster, avoids Railway 60s timeout
+        }
     }
     try:
         req = urllib.request.Request(url, data=json.dumps(data).encode('utf-8'), headers=headers)
@@ -75,7 +78,7 @@ def generate_itinerary(profile, request_data):
     - Budget Level: {budget_level}
 
     TRIP REQUEST:
-    - Destination: {dest}
+    - Destination: {dest}{'  ← MULTI-CITY ROUTE: plan each city segment in order, include inter-city transit day(s)' if '→' in dest else ''}
     - Duration: {days_count} Days
     - Total Budget: {budget} {currency}
     - Preferred Currency for costs: {currency}
@@ -117,6 +120,17 @@ def generate_itinerary(profile, request_data):
     9. COORDINATES: Provide accurate lat/lng (decimal degrees) for EVERY activity.
 
     10. COST FORMAT: Use {currency}. Integers only. Dot as decimal separator. No comma-thousands separators. Realistic local prices.
+
+    11. INTER-CITY TRANSIT (for multi-city routes): For each city transition, include a dedicated transit activity:
+        - title: "✈ / 🚄 / 🚌 [City A] → [City B]"
+        - desc: Exact train/bus/flight name, departure station, arrival station, booking platform
+        - cost: Realistic transport cost in {currency}
+        - duration: Door-to-door time including check-in/boarding
+        - transit tip: "Book 2+ weeks ahead for best prices on [platform]"
+        Include this transit cost in budget_summary.transport.
+
+    12. TRANSPORT BUDGET IN CITY: Include a daily transport estimate activity at start of each city's days:
+        - e.g., "🚇 Daily Transport Budget — Tokyo" with cost = realistic daily metro/bus spend
 
     OUTPUT JSON FORMAT (return ONLY valid JSON, nothing else):
     {{
