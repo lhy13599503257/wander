@@ -462,12 +462,15 @@
             </div>
         </div>
 
-        <!-- Day Navigation + Map Toggle -->
+        <!-- Day Navigation + Map Toggle + Lang Toggle -->
         <div class="relative z-10 px-6 mb-0 flex items-center justify-between border-b border-neutral-800 pb-4">
             <div class="overflow-x-auto no-scrollbar flex space-x-6 flex-1" id="day-tabs"></div>
-            <button onclick="toggleMap()" class="ml-4 flex-shrink-0 flex items-center space-x-1 text-neutral-500 hover:text-white border border-neutral-800 hover:border-orange-500 px-3 py-1.5 text-[10px] uppercase tracking-widest transition-colors">
-                <span>🗺</span><span class="ml-1">Map</span>
-            </button>
+            <div class="ml-4 flex-shrink-0 flex items-center space-x-2">
+                <button onclick="toggleMap()" class="flex items-center space-x-1 text-neutral-500 hover:text-white border border-neutral-800 hover:border-orange-500 px-3 py-1.5 text-[10px] uppercase tracking-widest transition-colors">
+                    <span>🗺</span><span class="ml-1" id="map-btn-text">Map</span>
+                </button>
+                <button onclick="toggleLanguage()" class="text-neutral-500 hover:text-white border border-neutral-800 hover:border-white px-3 py-1.5 text-[10px] uppercase tracking-widest transition-colors" id="lang-switch-itin">EN</button>
+            </div>
         </div>
         <div class="mb-8"></div>
 
@@ -496,6 +499,33 @@
             <button onclick="toggleFab()" id="fab-main" class="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center shadow-lg hover:bg-orange-500 hover:text-white transition-all text-2xl font-serif z-50 transition-transform duration-300">+</button>
         </div>
     </div>
+
+    <!-- SHARE MODAL -->
+    <div id="share-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[60]">
+        <div class="bg-[#111] border border-neutral-800 rounded-2xl p-8 mx-6 max-w-sm w-full space-y-4">
+            <h2 class="text-white font-serif italic text-2xl mb-1" id="share-modal-title">Share This Trip</h2>
+            <p class="text-neutral-500 text-xs uppercase tracking-widest mb-6" id="share-modal-sub">Choose how to share</p>
+            <!-- Copy Link -->
+            <button onclick="doShareLink()" class="w-full py-4 border border-neutral-700 hover:border-white text-white text-sm uppercase tracking-widest transition-colors flex items-center justify-center space-x-3">
+                <span>🔗</span><span id="share-link-btn">Copy Shareable Link</span>
+            </button>
+            <!-- Save PDF -->
+            <button onclick="doSharePDF()" class="w-full py-4 border border-neutral-700 hover:border-orange-500 text-white text-sm uppercase tracking-widest transition-colors flex items-center justify-center space-x-3">
+                <span>📄</span><span id="share-pdf-btn">Save as PDF</span>
+            </button>
+            <button onclick="document.getElementById('share-modal').classList.add('hidden');document.getElementById('share-modal').style.display=''" class="w-full py-3 text-neutral-600 hover:text-white text-xs uppercase tracking-widest transition-colors" id="share-cancel-btn">Cancel</button>
+        </div>
+    </div>
+
+    <!-- PRINT STYLES -->
+    <style>
+    @media print {
+        body * { visibility: hidden; }
+        #print-area, #print-area * { visibility: visible; }
+        #print-area { position: fixed; top: 0; left: 0; width: 100%; }
+        body { background: white !important; }
+    }
+    </style>
 
     <!-- AI CHAT PANEL -->
     <div id="ai-chat-panel" class="fixed inset-x-0 bottom-0 hidden flex-col bg-[#0a0a0a] border-t border-neutral-800 shadow-2xl" style="z-index:52;">
@@ -653,7 +683,10 @@
 
         function toggleLanguage() {
             currentLang = (currentLang === 'English') ? 'Chinese' : 'English';
-            document.getElementById('lang-switch').innerText = (currentLang === 'English') ? 'EN' : 'CN';
+            const label = (currentLang === 'English') ? 'EN' : 'CN';
+            document.getElementById('lang-switch').innerText = label;
+            const itinBtn = document.getElementById('lang-switch-itin');
+            if (itinBtn) itinBtn.innerText = label;
             applyLanguage();
         }
 
@@ -1688,10 +1721,111 @@
                     div.className = `timeline-item slide-up`;
                     div.innerHTML = `<div class="timeline-dot"></div><span class="absolute left-[-10px] top-[-20px] text-[10px] text-neutral-500 font-mono">${time}</span><div class="glass-card p-4 border border-orange-500/30"><h3 class="font-serif text-xl italic text-white mb-1">${title}</h3><p class="text-xs text-neutral-400">${desc}</p></div>`;
                     container.appendChild(div);
-                } else if (action === 'share') { window.print(); }
+                } else if (action === 'share') { openShareModal(); }
                 else if (action === 'ask') { openAIChat(); }
             }, 200);
         }
+
+        // ==========================================
+        // 🔗 SHARE FUNCTIONS
+        // ==========================================
+        function openShareModal() {
+            const isCN = currentLang === 'Chinese';
+            document.getElementById('share-modal-title').innerText = isCN ? '分享行程' : 'Share This Trip';
+            document.getElementById('share-modal-sub').innerText = isCN ? '选择分享方式' : 'Choose how to share';
+            document.getElementById('share-link-btn').innerText = isCN ? '复制分享链接' : 'Copy Shareable Link';
+            document.getElementById('share-pdf-btn').innerText = isCN ? '保存为 PDF' : 'Save as PDF';
+            document.getElementById('share-cancel-btn').innerText = isCN ? '取消' : 'Cancel';
+            const modal = document.getElementById('share-modal');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+        }
+
+        function doShareLink() {
+            if (!currentItineraryData) return;
+            try {
+                // Encode itinerary as base64 URL hash — no backend needed
+                const json = JSON.stringify(currentItineraryData);
+                const encoded = btoa(unescape(encodeURIComponent(json)));
+                const url = location.origin + location.pathname + '#trip=' + encoded;
+                navigator.clipboard.writeText(url).then(() => {
+                    document.getElementById('share-modal').classList.add('hidden');
+                    document.getElementById('share-modal').style.display = '';
+                    const msg = currentLang === 'Chinese'
+                        ? '🔗 链接已复制！发给朋友吧～'
+                        : '🔗 Link copied! Share with your friends!';
+                    showToast(msg);
+                }).catch(() => {
+                    // Clipboard API blocked — show URL for manual copy
+                    prompt(currentLang === 'Chinese' ? '复制这个链接：' : 'Copy this link:', url);
+                });
+            } catch(e) { alert('Error generating link: ' + e.message); }
+        }
+
+        function doSharePDF() {
+            document.getElementById('share-modal').classList.add('hidden');
+            document.getElementById('share-modal').style.display = '';
+            // Build a clean printable page in a new window
+            const isCN = currentLang === 'Chinese';
+            const trip = currentItineraryData;
+            let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>${trip.destination}</title>
+<style>
+  body { font-family: Georgia, serif; max-width: 700px; margin: 40px auto; color: #111; line-height: 1.7; }
+  h1 { font-size: 2.5em; margin-bottom: 4px; }
+  .meta { color: #888; font-size: 0.85em; margin-bottom: 32px; }
+  h2 { font-size: 1.2em; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-top: 32px; color: #333; }
+  .activity { margin: 16px 0; }
+  .time { color: #888; font-size: 0.8em; font-family: monospace; }
+  .title { font-size: 1.1em; font-weight: bold; margin: 2px 0; }
+  .desc { color: #555; font-size: 0.9em; }
+  .cost { color: #e67e22; font-size: 0.85em; }
+  @media print { body { margin: 20px; } }
+</style></head><body>`;
+            html += `<h1>${trip.destination}</h1>`;
+            html += `<div class="meta">${trip.summary?.date || ''} · ${trip.summary?.duration || ''} ${isCN ? '天' : 'days'} · Wander AI</div>`;
+            (trip.days || []).forEach((day, i) => {
+                html += `<h2>${isCN ? '第' + (i+1) + '天' : 'Day ' + (i+1)}${day.theme ? ' — ' + day.theme : ''}</h2>`;
+                (day.activities || []).forEach(a => {
+                    html += `<div class="activity">`;
+                    html += `<div class="time">${a.time || ''}</div>`;
+                    html += `<div class="title">${a.title || ''}</div>`;
+                    if (a.description) html += `<div class="desc">${a.description}</div>`;
+                    if (a.cost) html += `<div class="cost">${a.cost}</div>`;
+                    html += `</div>`;
+                });
+            });
+            html += `<div style="margin-top:40px;color:#ccc;font-size:0.8em;text-align:center">Generated by Wander AI · web-production-3d2fe.up.railway.app</div>`;
+            html += `</body></html>`;
+            const w = window.open('', '_blank');
+            w.document.write(html);
+            w.document.close();
+            setTimeout(() => w.print(), 500);
+        }
+
+        function showToast(msg) {
+            const t = document.createElement('div');
+            t.className = 'fixed top-6 left-1/2 -translate-x-1/2 bg-white text-black text-xs px-5 py-3 rounded-full shadow-xl z-[99] transition-all';
+            t.innerText = msg;
+            document.body.appendChild(t);
+            setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 2500);
+        }
+
+        // Load shared trip from URL hash on page load
+        (function checkSharedTrip() {
+            if (location.hash.startsWith('#trip=')) {
+                try {
+                    const encoded = location.hash.slice(6);
+                    const json = decodeURIComponent(escape(atob(encoded)));
+                    const data = JSON.parse(json);
+                    if (data && data.days) {
+                        renderItinerary(data);
+                        updateView(10);
+                        history.replaceState(null, '', location.pathname); // clean URL
+                    }
+                } catch(e) { console.warn('Failed to load shared trip:', e); }
+            }
+        })();
     </script>
 </body>
 </html>
