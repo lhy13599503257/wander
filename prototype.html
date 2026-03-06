@@ -333,8 +333,9 @@
             <h1 class="serif text-4xl italic leading-tight text-white">Where do you <br> call <span class="accent-text">home</span>?</h1>
             <p class="text-neutral-500 text-sm font-light">Start typing to search global cities.</p>
             <div class="space-y-4">
-                <div class="relative group">
-                    <input type="text" id="user-name-input" placeholder="Your first name (optional)" class="minimal-input" autocomplete="off" id="user-name-input">
+                <div class="space-y-1">
+                    <label class="text-neutral-600 text-[11px] uppercase tracking-widest" id="name-label">Your name (optional)</label>
+                    <input type="text" id="user-name-input" placeholder="e.g. Alex" class="minimal-input" autocomplete="off">
                 </div>
                 <div class="relative group">
                     <input type="text" id="home-search" placeholder="e.g. London, Toronto, Shanghai" class="minimal-input" autocomplete="off">
@@ -908,6 +909,7 @@
             safe(() => document.querySelector('#view-location h1').innerHTML = t.home_q);
             safe(() => document.querySelector('#view-location p').innerText = t.home_sub);
             safe(() => document.getElementById('btn-next-1').innerText = t.confirm_loc);
+            safe(() => { const isCN = currentLang === 'Chinese'; document.getElementById('name-label').innerText = isCN ? '你的名字（可选）' : 'Your name (optional)'; document.getElementById('user-name-input').placeholder = isCN ? '如：小明' : 'e.g. Alex'; });
             safe(() => document.getElementById('passport-section-label').innerText = currentLang === 'Chinese' ? '可选 — 用于签证建议' : 'Optional — for visa advice');
             safe(() => document.getElementById('passport-label').innerText = currentLang === 'Chinese' ? '护照国籍' : 'Passport Nationality');
             safe(() => document.getElementById('passport-input').placeholder = currentLang === 'Chinese' ? '如：中国、美国、英国' : 'e.g. China, United States, India');
