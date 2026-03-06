@@ -827,81 +827,68 @@
         }
 
         // === AUTOCOMPLETE LOGIC ===
-        // 中文城市名对照表
-        const CHINESE_CITIES = {
-            '纽约':'New York, USA','洛杉矶':'Los Angeles, USA','芝加哥':'Chicago, USA',
-            '迈阿密':'Miami, USA','旧金山':'San Francisco, USA','拉斯维加斯':'Las Vegas, USA',
-            '西雅图':'Seattle, USA','波士顿':'Boston, USA','奥斯汀':'Austin, USA',
-            '多伦多':'Toronto, Canada','温哥华':'Vancouver, Canada','蒙特利尔':'Montreal, Canada',
-            '巴黎':'Paris, France','尼斯':'Nice, France','罗马':'Rome, Italy',
-            '米兰':'Milan, Italy','威尼斯':'Venice, Italy','佛罗伦萨':'Florence, Italy',
-            '伦敦':'London, UK','巴塞罗那':'Barcelona, Spain','马德里':'Madrid, Spain',
-            '伊维萨':'Ibiza, Spain','里斯本':'Lisbon, Portugal','阿姆斯特丹':'Amsterdam, Netherlands',
-            '柏林':'Berlin, Germany','慕尼黑':'Munich, Germany','苏黎世':'Zurich, Switzerland',
-            '维也纳':'Vienna, Austria','布拉格':'Prague, Czechia','布达佩斯':'Budapest, Hungary',
-            '哥本哈根':'Copenhagen, Denmark','斯德哥尔摩':'Stockholm, Sweden','奥斯陆':'Oslo, Norway',
-            '雷克雅未克':'Reykjavik, Iceland','都柏林':'Dublin, Ireland','雅典':'Athens, Greece',
-            '圣托里尼':'Santorini, Greece','米科诺斯':'Mykonos, Greece',
-            '东京':'Tokyo, Japan','大阪':'Osaka, Japan','京都':'Kyoto, Japan','札幌':'Sapporo, Japan',
-            '首尔':'Seoul, South Korea','釜山':'Busan, South Korea','济州':'Jeju, South Korea',
-            '北京':'Beijing, China','上海':'Shanghai, China','深圳':'Shenzhen, China',
-            '广州':'Guangzhou, China','成都':'Chengdu, China','香港':'Hong Kong, China',
-            '澳门':'Macau, China','台北':'Taipei, Taiwan',
-            '曼谷':'Bangkok, Thailand','普吉':'Phuket, Thailand','清迈':'Chiang Mai, Thailand',
-            '新加坡':'Singapore','吉隆坡':'Kuala Lumpur, Malaysia','巴厘岛':'Bali, Indonesia',
-            '河内':'Hanoi, Vietnam','胡志明市':'Ho Chi Minh City, Vietnam',
-            '马尼拉':'Manila, Philippines','孟买':'Mumbai, India','新德里':'Delhi, India',
-            '迪拜':'Dubai, UAE','多哈':'Doha, Qatar','伊斯坦布尔':'Istanbul, Turkey',
-            '悉尼':'Sydney, Australia','墨尔本':'Melbourne, Australia','奥克兰':'Auckland, New Zealand',
-            '皇后镇':'Queenstown, New Zealand','里约热内卢':'Rio de Janeiro, Brazil',
-            '布宜诺斯艾利斯':'Buenos Aires, Argentina','墨西哥城':'Mexico City, Mexico',
-            '坎昆':'Cancun, Mexico',
-        };
-
+        // City autocomplete via OpenStreetMap Nominatim (free, no key, global coverage)
+        const _acTimers = new WeakMap();
         function setupAutocomplete(input, suggestionsBox) {
             input.addEventListener('input', function() {
                 const val = this.value.trim();
                 suggestionsBox.innerHTML = '';
-                if (!val) { suggestionsBox.classList.add('hidden'); return; }
+                if (val.length < 2) { suggestionsBox.classList.add('hidden'); return; }
 
-                // Check if input contains Chinese characters
-                const isChinese = /[\u4e00-\u9fa5]/.test(val);
-                let matches = [];
+                // Debounce: wait 300ms before firing API call
+                clearTimeout(_acTimers.get(input));
+                _acTimers.set(input, setTimeout(async () => {
+                    try {
+                        const lang = /[\u4e00-\u9fa5]/.test(val) ? 'zh' : 'en';
+                        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=6&featuretype=city&addressdetails=1&accept-language=${lang},en`;
+                        const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
+                        const results = await res.json();
 
-                if (isChinese) {
-                    // Search Chinese city names
-                    matches = Object.entries(CHINESE_CITIES)
-                        .filter(([zh]) => zh.includes(val))
-                        .map(([zh, en]) => ({ display: `${zh} — ${en}`, value: en }))
-                        .slice(0, 8);
-                } else {
-                    // Search English city names
-                    matches = GLOBAL_CITIES
-                        .filter(c => c.toLowerCase().includes(val.toLowerCase()))
-                        .map(c => ({ display: c, value: c }))
-                        .slice(0, 8);
-                }
+                        suggestionsBox.innerHTML = '';
+                        const cities = results.filter(r =>
+                            ['city','town','village','municipality','administrative'].includes(r.type) ||
+                            r.class === 'place' || r.class === 'boundary'
+                        ).slice(0, 6);
 
-                if (matches.length > 0) {
-                    suggestionsBox.classList.remove('hidden');
-                    matches.forEach(item => {
-                        const div = document.createElement('div');
-                        div.className = 'autocomplete-item';
-                        const regex = new RegExp(`(${val})`, 'gi');
-                        div.innerHTML = item.display.replace(regex, '<strong>$1</strong>');
-                        div.onclick = () => {
-                            input.value = item.value;
-                            suggestionsBox.classList.add('hidden');
-                        };
-                        suggestionsBox.appendChild(div);
-                    });
-                } else {
-                    // No match — still let them type freely
-                    suggestionsBox.classList.add('hidden');
-                }
+                        if (cities.length === 0) { suggestionsBox.classList.add('hidden'); return; }
+
+                        suggestionsBox.classList.remove('hidden');
+                        cities.forEach(item => {
+                            const addr = item.address || {};
+                            const city = addr.city || addr.town || addr.village || addr.county || item.name;
+                            const country = addr.country || '';
+                            const display = city + (country ? `, ${country}` : '');
+                            const searchVal = city + (country ? `, ${country}` : '');
+
+                            const div = document.createElement('div');
+                            div.className = 'autocomplete-item';
+                            div.textContent = display;
+                            div.onclick = () => {
+                                input.value = searchVal;
+                                suggestionsBox.classList.add('hidden');
+                            };
+                            suggestionsBox.appendChild(div);
+                        });
+                    } catch(e) {
+                        // Fallback to local list on error
+                        const matches = GLOBAL_CITIES
+                            .filter(c => c.toLowerCase().includes(val.toLowerCase()))
+                            .slice(0, 6);
+                        if (matches.length > 0) {
+                            suggestionsBox.classList.remove('hidden');
+                            matches.forEach(city => {
+                                const div = document.createElement('div');
+                                div.className = 'autocomplete-item';
+                                div.textContent = city;
+                                div.onclick = () => { input.value = city; suggestionsBox.classList.add('hidden'); };
+                                suggestionsBox.appendChild(div);
+                            });
+                        } else { suggestionsBox.classList.add('hidden'); }
+                    }
+                }, 300));
             });
             document.addEventListener('click', function(e) {
-                if (e.target !== input && e.target !== suggestionsBox) {
+                if (e.target !== input && !suggestionsBox.contains(e.target)) {
                     suggestionsBox.classList.add('hidden');
                 }
             });
