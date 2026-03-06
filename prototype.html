@@ -113,9 +113,10 @@
         .minimal-input {
             background: transparent;
             border: none;
-            border-bottom: 1px solid #333;
+            border-bottom: 1px solid #444;
             color: white;
             font-size: 2rem;
+            font-weight: 600;
             width: 100%;
             padding-bottom: 0.5rem;
             outline: none;
@@ -123,7 +124,7 @@
             font-style: italic;
         }
         .minimal-input:focus { border-color: #ff5e00; }
-        .minimal-input::placeholder { color: #333; }
+        .minimal-input::placeholder { color: #555; }
 
         input[type="date"]::-webkit-calendar-picker-indicator {
             filter: invert(1);
@@ -334,7 +335,7 @@
             <p class="text-neutral-500 text-sm font-light">Start typing to search global cities.</p>
             <div class="space-y-4">
                 <div class="space-y-1">
-                    <label class="text-neutral-600 text-[11px] uppercase tracking-widest" id="name-label">Your name (optional)</label>
+                    <label class="text-neutral-500 text-xs uppercase tracking-widest" id="name-label">Your name (optional)</label>
                     <input type="text" id="user-name-input" placeholder="e.g. Alex" class="minimal-input" autocomplete="off">
                 </div>
                 <div class="relative group">
@@ -345,7 +346,7 @@
         </div>
         <!-- Optional passport info -->
         <div class="mt-6 space-y-4 border-t border-neutral-800/50 pt-6">
-          <p class="text-neutral-600 text-[11px] uppercase tracking-widest" id="passport-section-label">Optional — for visa advice</p>
+          <p class="text-neutral-500 text-xs uppercase tracking-widest" id="passport-section-label">Optional — for visa advice</p>
           <!-- Passport nationality -->
           <div class="space-y-2">
             <label class="text-neutral-500 text-xs" id="passport-label">Passport Nationality</label>
@@ -522,16 +523,16 @@
                     <label class="text-neutral-600 text-xs uppercase tracking-widest mb-3 block" id="group-label">Travelers</label>
                     <div class="flex space-x-3" id="group-size-btns">
                         <button onclick="setGroupSize(1)" data-size="1" class="group-size-btn flex-1 py-3 border border-neutral-800 text-white text-sm uppercase tracking-widest transition-colors hover:border-orange-500 selected">
-                            <div class="text-xl mb-0.5">🧍</div><div class="text-[10px]" data-label-solo>Solo</div>
+                            <div class="text-xl mb-0.5">🧍</div><div class="text-xs text-neutral-300" data-label-solo>Solo</div>
                         </button>
                         <button onclick="setGroupSize(2)" data-size="2" class="group-size-btn flex-1 py-3 border border-neutral-800 text-white text-sm uppercase tracking-widest transition-colors hover:border-orange-500">
-                            <div class="text-xl mb-0.5">👫</div><div class="text-[10px]" data-label-duo>Couple</div>
+                            <div class="text-xl mb-0.5">👫</div><div class="text-xs text-neutral-300" data-label-duo>Couple</div>
                         </button>
                         <button onclick="setGroupSize(4)" data-size="4" class="group-size-btn flex-1 py-3 border border-neutral-800 text-white text-sm uppercase tracking-widest transition-colors hover:border-orange-500">
-                            <div class="text-xl mb-0.5">👨‍👩‍👧‍👦</div><div class="text-[10px]" data-label-group>Group 3-4</div>
+                            <div class="text-xl mb-0.5">👨‍👩‍👧‍👦</div><div class="text-xs text-neutral-300" data-label-group>Group 3-4</div>
                         </button>
                         <button onclick="setGroupSize(8)" data-size="8" class="group-size-btn flex-1 py-3 border border-neutral-800 text-white text-sm uppercase tracking-widest transition-colors hover:border-orange-500">
-                            <div class="text-xl mb-0.5">🎉</div><div class="text-[10px]" data-label-big>5+ People</div>
+                            <div class="text-xl mb-0.5">🎉</div><div class="text-xs text-neutral-300" data-label-big>5+ People</div>
                         </button>
                     </div>
                 </div>
@@ -2222,16 +2223,16 @@
                     <div class="timeline-dot"></div>
                     <span class="absolute left-[-10px] top-[-20px] text-[10px] text-neutral-500 font-mono">${act.time}</span>
                     ${transitHtml}
-                    <div class="activity-card glass-card p-4 pl-12 pr-10 hover:bg-neutral-900/30 transition-colors group border border-neutral-800/60 relative">
+                    <div class="activity-card glass-card p-5 pl-12 pr-10 hover:bg-neutral-900/30 transition-colors group border border-neutral-800/60 relative">
                         ${checkBtn}
                         ${navBtn}
-                        <div class="flex justify-between items-center mb-1">
-                            <span class="text-[10px] ${act.color || 'text-neutral-500'} uppercase tracking-widest">${act.tag}</span>
+                        <div class="flex justify-between items-center mb-1.5">
+                            <span class="text-[11px] ${act.color || 'text-neutral-500'} uppercase tracking-widest font-medium">${act.tag}</span>
                             <div class="flex items-center gap-2">${durationHtml}${costBadge}</div>
                         </div>
-                        <h3 class="font-serif text-lg italic text-white mb-0.5 leading-tight">${act.title}</h3>
+                        <h3 class="font-serif text-xl italic text-white mb-1 leading-tight">${act.title}</h3>
                         ${addressHtml}
-                        <p class="text-xs text-neutral-400 leading-relaxed">${act.desc}</p>
+                        <p class="text-sm text-neutral-300 leading-relaxed">${act.desc}</p>
                         ${whatToDoHtml}
                         ${photoHtml}
                         ${proTipHtml}
