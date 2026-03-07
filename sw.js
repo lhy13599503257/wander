@@ -20,8 +20,8 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = event.request.url;
 
-  if (url.includes('/api/')) {
-    // Network-first for API calls
+  // Network-first for API calls AND main HTML page (always get latest)
+  if (url.includes('/api/') || event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
         .then(res => {
@@ -32,7 +32,7 @@ self.addEventListener('fetch', event => {
         .catch(() => caches.match(event.request))
     );
   } else {
-    // Cache-first for everything else
+    // Cache-first for static assets (icons, manifest, etc.)
     event.respondWith(
       caches.match(event.request).then(cached => {
         if (cached) return cached;
