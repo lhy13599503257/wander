@@ -443,9 +443,9 @@
             <div class="mt-4 space-y-2" id="shopping-freq-wrap">
                 <p class="text-neutral-600 text-xs uppercase tracking-widest" id="shopping-freq-label">How often to include shopping?</p>
                 <div class="flex gap-2 flex-wrap" id="shopping-freq-btns">
-                    <button onclick="selectShopFreq(this,'light')" class="shop-freq-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-val="light" id="sf-light">偶尔逛逛</button>
-                    <button onclick="selectShopFreq(this,'medium')" class="shop-freq-btn text-xs px-3 py-1.5 border border-orange-500 text-orange-500 rounded-full" data-val="medium" id="sf-medium">隔天安排</button>
-                    <button onclick="selectShopFreq(this,'heavy')" class="shop-freq-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-val="heavy" id="sf-heavy">购物为主</button>
+                    <button onclick="selectShopFreq(this,'light')" class="shop-freq-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-val="light" id="sf-light">Occasionally</button>
+                    <button onclick="selectShopFreq(this,'medium')" class="shop-freq-btn text-xs px-3 py-1.5 border border-orange-500 text-orange-500 rounded-full" data-val="medium" id="sf-medium">Every other day</button>
+                    <button onclick="selectShopFreq(this,'heavy')" class="shop-freq-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-val="heavy" id="sf-heavy">Shopping focus</button>
                 </div>
             </div>
             <button onclick="finishProfile()" class="glass-card w-full py-4 mt-8 text-orange-500 border-orange-900/50 hover:bg-orange-900/20 uppercase text-xs tracking-widest font-bold">Finish Profile Setup</button>
@@ -572,20 +572,20 @@
                 <p class="text-neutral-600 text-xs uppercase tracking-widest mb-3" id="vibe-label">Trip Vibe</p>
                 <div class="flex flex-wrap gap-2" id="vibe-container">
                     <button onclick="selectVibe(this,'any')"       class="vibe-btn selected text-xs px-3 py-1.5 border border-orange-500 text-orange-500 rounded-full transition-colors" data-vibe="any">✨ Any</button>
-                    <button onclick="selectVibe(this,'culture')"   class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="culture">🏛️ 历史文化</button>
-                    <button onclick="selectVibe(this,'foodie')"    class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="foodie">🍜 美食探索</button>
-                    <button onclick="selectVibe(this,'nature')"    class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="nature">🏞️ 自然冒险</button>
-                    <button onclick="selectVibe(this,'sports')"    class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="sports">⚽ 运动旅行</button>
-                    <button onclick="selectVibe(this,'photo')"     class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="photo">📸 拍照打卡</button>
-                    <button onclick="selectVibe(this,'artsy')"     class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="artsy">🎨 文艺慢游</button>
-                    <button onclick="selectVibe(this,'nightlife')" class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="nightlife">🌙 夜生活</button>
-                    <button onclick="selectVibe(this,'wellness')"  class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="wellness">💆 放松疗愈</button>
-                    <button onclick="selectVibe(this,'shopping')"  class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="shopping">🛍️ 购物血拼</button>
-                    <button onclick="selectVibe(this,'romantic')"  class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="romantic">💑 情侣浪漫</button>
-                    <button onclick="selectVibe(this,'family')"    class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="family">👨‍👩‍👧 家庭出游</button>
-                    <button onclick="selectVibe(this,'backpacker')"class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="backpacker">🎒 穷游背包</button>
-                    <button onclick="selectVibe(this,'luxury')"    class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="luxury">💎 轻奢精品</button>
-                    <button onclick="selectVibe(this,'music')"     class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="music">🎵 音乐演出</button>
+                    <button onclick="selectVibe(this,'culture')"   class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="culture">🏛️ Culture</button>
+                    <button onclick="selectVibe(this,'foodie')"    class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="foodie">🍜 Foodie</button>
+                    <button onclick="selectVibe(this,'nature')"    class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="nature">🏞️ Nature</button>
+                    <button onclick="selectVibe(this,'sports')"    class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="sports">⚽ Sports</button>
+                    <button onclick="selectVibe(this,'photo')"     class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="photo">📸 Photo</button>
+                    <button onclick="selectVibe(this,'artsy')"     class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="artsy">🎨 Artsy</button>
+                    <button onclick="selectVibe(this,'nightlife')" class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="nightlife">🌙 Nightlife</button>
+                    <button onclick="selectVibe(this,'wellness')"  class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="wellness">💆 Wellness</button>
+                    <button onclick="selectVibe(this,'shopping')"  class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="shopping">🛍️ Shopping</button>
+                    <button onclick="selectVibe(this,'romantic')"  class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="romantic">💑 Romantic</button>
+                    <button onclick="selectVibe(this,'family')"    class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="family">👨‍👩‍👧 Family</button>
+                    <button onclick="selectVibe(this,'backpacker')"class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="backpacker">🎒 Backpacker</button>
+                    <button onclick="selectVibe(this,'luxury')"    class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="luxury">💎 Luxury</button>
+                    <button onclick="selectVibe(this,'music')"     class="vibe-btn text-xs px-3 py-1.5 border border-neutral-800 hover:border-orange-500 text-neutral-500 hover:text-orange-500 rounded-full transition-colors" data-vibe="music">🎵 Music</button>
                 </div>
             </div>
             <!-- Real Flights (Amadeus) -->
@@ -994,6 +994,27 @@
             safe(() => document.querySelector('#view-shopping h1').innerHTML = t.shop_q);
             safe(() => { const el = document.getElementById('shopping-freq-label'); if(el) el.innerText = isCN ? '购物安排频率？' : 'How often to include shopping?'; });
             safe(() => { const el = document.getElementById('vibe-label'); if(el) el.innerText = isCN ? '行程氛围' : 'Trip Vibe'; });
+            const vibeMap = {
+                any: ['✨ Any', '✨ 随便'],
+                culture: ['🏛️ Culture', '🏛️ 历史文化'],
+                foodie: ['🍜 Foodie', '🍜 美食探索'],
+                nature: ['🏞️ Nature', '🏞️ 自然冒险'],
+                sports: ['⚽ Sports', '⚽ 运动旅行'],
+                photo: ['📸 Photo', '📸 拍照打卡'],
+                artsy: ['🎨 Artsy', '🎨 文艺慢游'],
+                nightlife: ['🌙 Nightlife', '🌙 夜生活'],
+                wellness: ['💆 Wellness', '💆 放松疗愈'],
+                shopping: ['🛍️ Shopping', '🛍️ 购物血拼'],
+                romantic: ['💑 Romantic', '💑 情侣浪漫'],
+                family: ['👨‍👩‍👧 Family', '👨‍👩‍👧 家庭出游'],
+                backpacker: ['🎒 Backpacker', '🎒 穷游背包'],
+                luxury: ['💎 Luxury', '💎 轻奢精品'],
+                music: ['🎵 Music', '🎵 音乐演出'],
+            };
+            document.querySelectorAll('.vibe-btn').forEach(btn => {
+                const vibe = btn.dataset.vibe;
+                if (vibeMap[vibe]) btn.innerText = vibeMap[vibe][isCN ? 1 : 0];
+            });
             safe(() => { const l=document.getElementById('sf-light'); if(l) l.innerText = isCN?'偶尔逛逛':'Occasionally'; });
             safe(() => { const m=document.getElementById('sf-medium'); if(m) m.innerText = isCN?'隔天安排':'Every other day'; });
             safe(() => { const h=document.getElementById('sf-heavy'); if(h) h.innerText = isCN?'购物为主':'Shopping focus'; });
