@@ -1013,7 +1013,7 @@
             };
             document.querySelectorAll('.vibe-btn').forEach(btn => {
                 const vibe = btn.dataset.vibe;
-                if (vibeMap[vibe]) btn.innerText = vibeMap[vibe][isCN ? 1 : 0];
+                if (vibeMap[vibe]) btn.innerText = vibeMap[vibe][currentLang === 'Chinese' ? 1 : 0];
             });
             safe(() => { const l=document.getElementById('sf-light'); if(l) l.innerText = isCN?'偶尔逛逛':'Occasionally'; });
             safe(() => { const m=document.getElementById('sf-medium'); if(m) m.innerText = isCN?'隔天安排':'Every other day'; });
