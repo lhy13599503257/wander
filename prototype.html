@@ -98,16 +98,13 @@
         }
 
         .dashboard-header {
-            position: fixed;
-            top: 0;
-            left: 0;
+            position: relative;
             width: 100%;
-            padding: 1.5rem;
+            padding: 1rem 1.5rem 0.5rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            z-index: 50;
-            background: linear-gradient(to bottom, #0a0a0a 0%, transparent 100%);
+            margin-top: 52px; /* clear the fixed global nav bar */
         }
         
         .minimal-input {
@@ -468,7 +465,7 @@
             <span class="text-xl font-bold tracking-tighter">WN<br>DR</span>
             <button onclick="toggleProfileModal()" id="avatar-btn" class="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-xs text-orange-500 hover:bg-neutral-700 hover:text-white transition-colors">✦</button>
         </div>
-        <div class="flex flex-col justify-center min-h-screen max-w-md mx-auto px-6 space-y-12">
+        <div class="flex flex-col max-w-md mx-auto px-6 space-y-12 pb-16">
             <div class="space-y-2"><p class="text-orange-500 text-xs uppercase tracking-widest" id="dashboard-subtitle">Ready for next adventure?</p><h1 class="text-3xl text-white font-light" id="dashboard-greeting">Where to next, <br> <span class="font-serif italic">Traveler?</span></h1></div>
             <div class="space-y-8">
                 <!-- DESTINATION INPUT -->
